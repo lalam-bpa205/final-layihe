@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmartERP.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using SmartERP.Infrastructure.Persistence;
 namespace SmartERP.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260707113554_InventoryModule")]
+    partial class InventoryModule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -173,43 +176,6 @@ namespace SmartERP.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
-                });
-
-            modelBuilder.Entity("SmartERP.Domain.Entities.Auth.UserModuleAccess", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int>("Module")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Module")
-                        .IsUnique();
-
-                    b.ToTable("UserModuleAccesses", (string)null);
                 });
 
             modelBuilder.Entity("SmartERP.Domain.Entities.Auth.UserRole", b =>
@@ -739,17 +705,6 @@ namespace SmartERP.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("SmartERP.Domain.Entities.Auth.UserModuleAccess", b =>
-                {
-                    b.HasOne("SmartERP.Domain.Entities.Auth.User", "User")
-                        .WithMany("ModuleAccesses")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("SmartERP.Domain.Entities.Auth.UserRole", b =>
                 {
                     b.HasOne("SmartERP.Domain.Entities.Auth.Role", "Role")
@@ -872,8 +827,6 @@ namespace SmartERP.Infrastructure.Migrations
 
             modelBuilder.Entity("SmartERP.Domain.Entities.Auth.User", b =>
                 {
-                    b.Navigation("ModuleAccesses");
-
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("UserRoles");

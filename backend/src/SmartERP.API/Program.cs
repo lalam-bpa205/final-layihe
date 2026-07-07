@@ -8,6 +8,8 @@ using SmartERP.API.Middleware;
 using SmartERP.API.Services;
 using SmartERP.Application;
 using SmartERP.Application.Common.Interfaces;
+using SmartERP.Domain.Constants;
+using SmartERP.Domain.Enums;
 using SmartERP.Infrastructure;
 using SmartERP.Infrastructure.Persistence;
 
@@ -44,7 +46,19 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+// Hər modul üçün policy: SuperAdmin/Admin hər şeyi görür,
+// digərləri yalnız "module" claim-i olduqda daxil ola bilir
+builder.Services.AddAuthorization(options =>
+{
+    foreach (var module in Enum.GetNames<AppModule>())
+    {
+        options.AddPolicy($"Module:{module}", policy =>
+            policy.RequireAssertion(ctx =>
+                ctx.User.IsInRole(RoleNames.SuperAdmin) ||
+                ctx.User.IsInRole(RoleNames.Admin) ||
+                ctx.User.HasClaim("module", module)));
+    }
+});
 
 // ---------- Swagger (JWT dəstəyi ilə) ----------
 builder.Services.AddEndpointsApiExplorer();

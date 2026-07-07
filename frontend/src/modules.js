@@ -1,0 +1,77 @@
+// Sistemin modulları. `key` backend-dəki AppModule enum adları ilə üst-üstə düşməlidir.
+export const MODULES = [
+  {
+    key: 'Hr',
+    label: 'İnsan Resursları',
+    icon: '👥',
+    description: 'İşçilər, şöbələr, davamiyyət və məzuniyyətlər',
+    path: '/hr/employees',
+    basePath: '/hr',
+    ready: true,
+    nav: [
+      { to: '/hr/employees', label: 'İşçilər', icon: '👥' },
+      { to: '/hr/departments', label: 'Şöbələr', icon: '🏢' },
+      { to: '/hr/positions', label: 'Vəzifələr', icon: '💼' },
+      { to: '/hr/attendance', label: 'Davamiyyət', icon: '🕘' },
+      { to: '/hr/leave-requests', label: 'Məzuniyyət', icon: '🌴' },
+    ],
+  },
+  {
+    key: 'Inventory',
+    label: 'Anbar',
+    icon: '📦',
+    description: 'Məhsullar, stok hərəkətləri və anbarlar arası transferlər',
+    path: '/inventory/products',
+    basePath: '/inventory',
+    ready: true,
+    nav: [
+      { to: '/inventory/products', label: 'Məhsullar', icon: '📦' },
+      { to: '/inventory/categories', label: 'Kateqoriyalar', icon: '🏷️' },
+      { to: '/inventory/warehouses', label: 'Anbarlar', icon: '🏭' },
+      { to: '/inventory/stock', label: 'Stok', icon: '📈' },
+    ],
+  },
+  {
+    key: 'Transport',
+    label: 'Nəqliyyat',
+    icon: '🚚',
+    description: 'Avtomobillər, sürücülər, çatdırılma və yanacaq qeydləri',
+    path: '/transport',
+    basePath: '/transport',
+    ready: false,
+    nav: [],
+  },
+  {
+    key: 'Finance',
+    label: 'Maliyyə',
+    icon: '💰',
+    description: 'Gəlir-xərc, büdcə, fakturalar və ödənişlər',
+    path: '/finance',
+    basePath: '/finance',
+    ready: false,
+    nav: [],
+  },
+  {
+    key: 'Sales',
+    label: 'Satış və Müştərilər',
+    icon: '🤝',
+    description: 'Müştərilər, təchizatçılar, alış-satış sifarişləri',
+    path: '/sales',
+    basePath: '/sales',
+    ready: false,
+    nav: [],
+  },
+  {
+    key: 'Reports',
+    label: 'Hesabatlar',
+    icon: '📑',
+    description: 'Dinamik hesabatlar, Excel və PDF ixracı',
+    path: '/reports',
+    basePath: '/reports',
+    ready: false,
+    nav: [],
+  },
+];
+
+export const findModuleByPath = (pathname) =>
+  MODULES.find((m) => pathname.startsWith(m.basePath));

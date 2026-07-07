@@ -5,6 +5,7 @@ using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Auth.Dtos;
 using SmartERP.Domain.Constants;
 using SmartERP.Domain.Entities.Auth;
+using SmartERP.Domain.Enums;
 
 namespace SmartERP.Application.Features.Auth;
 
@@ -59,6 +60,7 @@ public class AuthService(
 
         var user = await unitOfWork.Repository<User>().Query()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Include(u => u.ModuleAccesses)
             .FirstOrDefaultAsync(
                 u => u.UserName == request.UserNameOrEmail || u.Email == request.UserNameOrEmail, ct);
 
@@ -76,6 +78,7 @@ public class AuthService(
     {
         var storedToken = await unitOfWork.Repository<RefreshToken>().Query()
             .Include(rt => rt.User).ThenInclude(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Include(rt => rt.User).ThenInclude(u => u.ModuleAccesses)
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken, ct);
 
         if (storedToken is null || !storedToken.IsActive || !storedToken.User.IsActive)
@@ -130,6 +133,7 @@ public class AuthService(
     {
         var user = await unitOfWork.Repository<User>().Query()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Include(u => u.ModuleAccesses)
             .FirstOrDefaultAsync(u => u.Id == userId, ct)
             ?? throw new NotFoundException("İstifadəçi", userId);
 
@@ -173,8 +177,9 @@ public class AuthService(
     private async Task<AuthResponse> BuildAuthResponseAsync(User user, CancellationToken ct, bool saveChanges = true)
     {
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
+        var modules = GetEffectiveModules(user, roles);
 
-        var (accessToken, expiresAt) = tokenService.CreateAccessToken(user, roles);
+        var (accessToken, expiresAt) = tokenService.CreateAccessToken(user, roles, modules);
         var refreshToken = new RefreshToken
         {
             UserId = user.Id,
@@ -190,11 +195,37 @@ public class AuthService(
         return new AuthResponse(accessToken, expiresAt, refreshToken.Token, ToDto(user));
     }
 
-    private static UserDto ToDto(User user) => new(
-        user.Id,
-        user.UserName,
-        user.Email,
-        user.FirstName,
-        user.LastName,
-        user.UserRoles.Select(ur => ur.Role.Name).ToList());
+    private static UserDto ToDto(User user)
+    {
+        var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
+        return new UserDto(
+            user.Id,
+            user.UserName,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            roles,
+            GetEffectiveModules(user, roles));
+    }
+
+    /// <summary>
+    /// Effektiv modul icazələri: açıq təyin edilmiş modullar + rollardan gələnlər.
+    /// SuperAdmin/Admin bütün modulları görür.
+    /// </summary>
+    private static List<string> GetEffectiveModules(User user, List<string> roles)
+    {
+        var modules = user.ModuleAccesses
+            .Select(ma => ma.Module.ToString())
+            .ToHashSet();
+
+        if (roles.Contains(RoleNames.HRManager)) modules.Add(nameof(AppModule.Hr));
+        if (roles.Contains(RoleNames.WarehouseManager)) modules.Add(nameof(AppModule.Inventory));
+        if (roles.Contains(RoleNames.TransportManager)) modules.Add(nameof(AppModule.Transport));
+        if (roles.Contains(RoleNames.FinanceManager)) modules.Add(nameof(AppModule.Finance));
+
+        if (roles.Contains(RoleNames.SuperAdmin) || roles.Contains(RoleNames.Admin))
+            modules.UnionWith(Enum.GetNames<AppModule>());
+
+        return modules.Order().ToList();
+    }
 }

@@ -21,7 +21,8 @@ public record UserDto(
     string Email,
     string FirstName,
     string LastName,
-    List<string> Roles);
+    List<string> Roles,
+    List<string> Modules);
 
 public record AuthResponse(
     string AccessToken,

@@ -13,4 +13,5 @@ public class User : BaseEntity
 
     public ICollection<UserRole> UserRoles { get; set; } = [];
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+    public ICollection<UserModuleAccess> ModuleAccesses { get; set; } = [];
 }

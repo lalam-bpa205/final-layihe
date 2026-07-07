@@ -15,7 +15,8 @@ public class JwtTokenService(IOptions<JwtSettings> options) : ITokenService
 
     public int RefreshTokenDays => _settings.RefreshTokenDays;
 
-    public (string AccessToken, DateTime ExpiresAtUtc) CreateAccessToken(User user, IReadOnlyCollection<string> roles)
+    public (string AccessToken, DateTime ExpiresAtUtc) CreateAccessToken(
+        User user, IReadOnlyCollection<string> roles, IReadOnlyCollection<string> modules)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_settings.AccessTokenMinutes);
 
@@ -26,6 +27,7 @@ public class JwtTokenService(IOptions<JwtSettings> options) : ITokenService
             new(ClaimTypes.Email, user.Email)
         };
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+        claims.AddRange(modules.Select(module => new Claim("module", module)));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
         var descriptor = new SecurityTokenDescriptor

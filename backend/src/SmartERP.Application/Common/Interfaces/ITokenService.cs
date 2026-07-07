@@ -4,7 +4,8 @@ namespace SmartERP.Application.Common.Interfaces;
 
 public interface ITokenService
 {
-    (string AccessToken, DateTime ExpiresAtUtc) CreateAccessToken(User user, IReadOnlyCollection<string> roles);
+    (string AccessToken, DateTime ExpiresAtUtc) CreateAccessToken(
+        User user, IReadOnlyCollection<string> roles, IReadOnlyCollection<string> modules);
 
     /// <summary>Kriptoqrafik təsadüfi refresh token yaradır.</summary>
     string CreateRefreshToken();

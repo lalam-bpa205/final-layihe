@@ -10,6 +10,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.Entities.Auth.Role> Roles => Set<Domain.Entities.Auth.Role>();
     public DbSet<Domain.Entities.Auth.UserRole> UserRoles => Set<Domain.Entities.Auth.UserRole>();
     public DbSet<Domain.Entities.Auth.RefreshToken> RefreshTokens => Set<Domain.Entities.Auth.RefreshToken>();
+    public DbSet<Domain.Entities.Auth.UserModuleAccess> UserModuleAccesses => Set<Domain.Entities.Auth.UserModuleAccess>();
+
+    public DbSet<Domain.Entities.Hr.Department> Departments => Set<Domain.Entities.Hr.Department>();
+    public DbSet<Domain.Entities.Hr.Position> Positions => Set<Domain.Entities.Hr.Position>();
+    public DbSet<Domain.Entities.Hr.Employee> Employees => Set<Domain.Entities.Hr.Employee>();
+    public DbSet<Domain.Entities.Hr.Attendance> Attendances => Set<Domain.Entities.Hr.Attendance>();
+    public DbSet<Domain.Entities.Hr.LeaveRequest> LeaveRequests => Set<Domain.Entities.Hr.LeaveRequest>();
+
+    public DbSet<Domain.Entities.Inventory.Category> Categories => Set<Domain.Entities.Inventory.Category>();
+    public DbSet<Domain.Entities.Inventory.Warehouse> Warehouses => Set<Domain.Entities.Inventory.Warehouse>();
+    public DbSet<Domain.Entities.Inventory.Product> Products => Set<Domain.Entities.Inventory.Product>();
+    public DbSet<Domain.Entities.Inventory.StockMovement> StockMovements => Set<Domain.Entities.Inventory.StockMovement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -27,6 +27,17 @@ export const login = createAsyncThunk(
   }
 );
 
+// Cari istifadəçi məlumatını (rollar, modullar) serverdən təzələyir
+export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithValue }) => {
+  try {
+    const { data } = await api.get('/auth/me');
+    localStorage.setItem('user', JSON.stringify(data));
+    return data;
+  } catch {
+    return rejectWithValue(null);
+  }
+});
+
 export const logout = createAsyncThunk('auth/logout', async () => {
   const refreshToken = localStorage.getItem('refreshToken');
   if (refreshToken) {
@@ -56,6 +67,9 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(fetchMe.fulfilled, (state, action) => {
+        state.user = action.payload;
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;

@@ -55,6 +55,22 @@ public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
     }
 }
 
+public class UserModuleAccessConfiguration : IEntityTypeConfiguration<UserModuleAccess>
+{
+    public void Configure(EntityTypeBuilder<UserModuleAccess> builder)
+    {
+        builder.ToTable("UserModuleAccesses");
+
+        // Eyni istifadəçiyə eyni modul iki dəfə verilə bilməz
+        builder.HasIndex(ma => new { ma.UserId, ma.Module }).IsUnique();
+
+        builder.HasOne(ma => ma.User)
+            .WithMany(u => u.ModuleAccesses)
+            .HasForeignKey(ma => ma.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 {
     public void Configure(EntityTypeBuilder<RefreshToken> builder)
