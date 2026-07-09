@@ -2,7 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SmartERP.Application.Common.Interfaces;
+using SmartERP.Application.Features.Ai;
+using SmartERP.Application.Features.Reports;
+using SmartERP.Infrastructure.Ai;
 using SmartERP.Infrastructure.Identity;
+using SmartERP.Infrastructure.Reports;
 using SmartERP.Infrastructure.Persistence;
 using SmartERP.Infrastructure.Persistence.Interceptors;
 using SmartERP.Infrastructure.Persistence.Repositories;
@@ -30,6 +34,11 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddSingleton<ITokenService, JwtTokenService>();
+
+        services.AddScoped<IReportService, ExcelReportService>();
+
+        services.Configure<OpenAiSettings>(configuration.GetSection(OpenAiSettings.SectionName));
+        services.AddHttpClient<IAiAssistantService, OpenAiAssistantService>();
 
         return services;
     }

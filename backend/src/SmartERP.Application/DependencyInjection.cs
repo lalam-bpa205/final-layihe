@@ -4,6 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using SmartERP.Application.Features.Auth;
 using SmartERP.Application.Features.Hr;
 using SmartERP.Application.Features.Inventory;
+using SmartERP.Application.Features.Dashboard;
+using SmartERP.Application.Features.Finance;
+using SmartERP.Application.Features.Sales;
+using SmartERP.Application.Features.Transport;
 
 namespace SmartERP.Application;
 
@@ -28,6 +32,23 @@ public static class DependencyInjection
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IStockService, StockService>();
+
+        services.AddScoped<IVehicleService, VehicleService>();
+        services.AddScoped<IDriverService, DriverService>();
+        services.AddScoped<IDeliveryService, DeliveryService>();
+        services.AddScoped<IVehicleLogService, VehicleLogService>();
+
+        services.AddScoped<ITransactionCategoryService, TransactionCategoryService>();
+        services.AddScoped<IFinanceTransactionService, FinanceTransactionService>();
+        services.AddScoped<IBudgetService, BudgetService>();
+        services.AddScoped<IInvoiceService, InvoiceService>();
+
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<ISupplierService, SupplierService>();
+        services.AddScoped<ISalesOrderService, SalesOrderService>();
+        services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+
+        services.AddScoped<IDashboardService, DashboardService>();
 
         return services;
     }

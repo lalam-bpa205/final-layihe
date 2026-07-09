@@ -13,6 +13,7 @@ namespace SmartERP.API.Controllers;
 public class ProductsController(IProductService productService) : ControllerBase
 {
     [HttpGet]
+    [Authorize] // məhsul siyahısı digər modulların dropdown-larında da lazımdır (satış/alış sifarişləri)
     public async Task<ActionResult<PagedResult<ProductDto>>> GetPaged([FromQuery] ProductFilter filter, CancellationToken ct) =>
         Ok(await productService.GetPagedAsync(filter, ct));
 

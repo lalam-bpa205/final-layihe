@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMe, logout } from '../features/auth/authSlice';
 import { MODULES } from '../modules';
+import AdminDashboard from '../components/AdminDashboard';
+import NotificationBell from '../components/NotificationBell';
 
 export default function ModulesPage() {
   const dispatch = useDispatch();
@@ -24,6 +26,7 @@ export default function ModulesPage() {
           <p className="text-xs text-slate-400 mt-0.5">Logistika İdarəetmə Sistemi</p>
         </div>
         <div className="flex items-center gap-4">
+          <NotificationBell dark />
           <div className="text-right">
             <p className="text-sm font-medium text-white">
               {user?.firstName} {user?.lastName}
@@ -85,6 +88,11 @@ export default function ModulesPage() {
             );
           })}
         </div>
+
+        {/* İdarəetmə paneli — yalnız SuperAdmin/Admin görür */}
+        {(user?.roles?.includes('SuperAdmin') || user?.roles?.includes('Admin')) && (
+          <AdminDashboard />
+        )}
       </main>
     </div>
   );

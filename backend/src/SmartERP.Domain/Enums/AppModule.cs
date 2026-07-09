@@ -11,5 +11,6 @@ public enum AppModule
     Transport = 3,
     Finance = 4,
     Sales = 5,
-    Reports = 6
+    Reports = 6,
+    Ai = 7
 }

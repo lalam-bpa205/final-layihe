@@ -2,6 +2,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../features/auth/authSlice';
 import { findModuleByPath } from '../modules';
+import NotificationBell from './NotificationBell';
 
 export default function Layout() {
   const dispatch = useDispatch();
@@ -71,6 +72,7 @@ export default function Layout() {
             {module.icon} {module.label}
           </p>
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="text-right">
               <p className="text-sm font-medium text-slate-800">
                 {user?.firstName} {user?.lastName}

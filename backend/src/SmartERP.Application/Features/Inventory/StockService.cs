@@ -24,6 +24,7 @@ public interface IStockService
 public class StockService(
     IUnitOfWork unitOfWork,
     IMapper mapper,
+    INotificationService notifications,
     IValidator<StockInRequest> stockInValidator,
     IValidator<StockOutRequest> stockOutValidator,
     IValidator<StockTransferRequest> transferValidator) : IStockService
@@ -122,7 +123,34 @@ public class StockService(
             return newMovement;
         }, ct);
 
+        await NotifyIfLowStockAsync(request.ProductId, ct);
+
         return await GetDtoAsync(movement.Id, ct);
+    }
+
+    /// <summary>Ümumi qalıq minimum səviyyəyə düşübsə Anbar moduluna xəbərdarlıq göndərir.</summary>
+    private async Task NotifyIfLowStockAsync(int productId, CancellationToken ct)
+    {
+        var product = await unitOfWork.Repository<Product>().Query()
+            .Where(p => p.Id == productId)
+            .Select(p => new
+            {
+                p.Name,
+                p.MinStockLevel,
+                Stock = p.StockMovements.Sum(m =>
+                    m.Type == StockMovementType.In || m.Type == StockMovementType.TransferIn
+                        ? m.Quantity : -m.Quantity)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (product is not null && product.Stock <= product.MinStockLevel)
+        {
+            await notifications.NotifyModuleAsync(
+                AppModule.Inventory,
+                "⚠️ Az stok xəbərdarlığı",
+                $"\"{product.Name}\" — qalıq {product.Stock:0.###}, minimum {product.MinStockLevel:0.###}.",
+                "/inventory/products", ct);
+        }
     }
 
     public async Task<List<StockMovementDto>> TransferAsync(StockTransferRequest request, CancellationToken ct = default)

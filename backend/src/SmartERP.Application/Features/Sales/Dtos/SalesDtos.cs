@@ -1,0 +1,82 @@
+using SmartERP.Domain.Enums;
+
+namespace SmartERP.Application.Features.Sales.Dtos;
+
+// ---------- Customer / Supplier ----------
+public class PartnerDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string? ContactName { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public int OrderCount { get; set; }
+}
+
+public record SavePartnerRequest(
+    string Name,
+    string? ContactName,
+    string? Phone,
+    string? Email,
+    string? Address);
+
+// ---------- Orders (ümumi) ----------
+public class OrderItemDto
+{
+    public int Id { get; set; }
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = null!;
+    public string Unit { get; set; } = null!;
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal LineTotal { get; set; }
+}
+
+public record OrderItemRequest(int ProductId, decimal Quantity, decimal UnitPrice);
+
+public record SaveOrderRequest(
+    int PartnerId,
+    DateOnly OrderDate,
+    int WarehouseId,
+    string? Note,
+    List<OrderItemRequest> Items);
+
+public record OrderFilter(
+    int Page = 1,
+    int PageSize = 10,
+    int? Status = null,
+    string? Search = null);
+
+// ---------- SalesOrder ----------
+public class SalesOrderDto
+{
+    public int Id { get; set; }
+    public string Number { get; set; } = null!;
+    public int CustomerId { get; set; }
+    public string CustomerName { get; set; } = null!;
+    public DateOnly OrderDate { get; set; }
+    public int WarehouseId { get; set; }
+    public string WarehouseName { get; set; } = null!;
+    public SalesOrderStatus Status { get; set; }
+    public decimal TotalAmount { get; set; }
+    public string? Note { get; set; }
+    public string? InvoiceNumber { get; set; }
+    public List<OrderItemDto> Items { get; set; } = [];
+}
+
+// ---------- PurchaseOrder ----------
+public class PurchaseOrderDto
+{
+    public int Id { get; set; }
+    public string Number { get; set; } = null!;
+    public int SupplierId { get; set; }
+    public string SupplierName { get; set; } = null!;
+    public DateOnly OrderDate { get; set; }
+    public int WarehouseId { get; set; }
+    public string WarehouseName { get; set; } = null!;
+    public PurchaseOrderStatus Status { get; set; }
+    public decimal TotalAmount { get; set; }
+    public string? Note { get; set; }
+    public List<OrderItemDto> Items { get; set; } = [];
+}

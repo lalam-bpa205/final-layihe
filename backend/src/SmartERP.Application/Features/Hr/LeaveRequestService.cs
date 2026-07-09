@@ -23,6 +23,7 @@ public class LeaveRequestService(
     IUnitOfWork unitOfWork,
     IMapper mapper,
     ICurrentUserService currentUser,
+    INotificationService notifications,
     IValidator<CreateLeaveRequest> validator) : ILeaveRequestService
 {
     public async Task<PagedResult<LeaveRequestDto>> GetPagedAsync(LeaveFilter filter, CancellationToken ct = default)
@@ -67,7 +68,16 @@ public class LeaveRequestService(
 
         await unitOfWork.Repository<LeaveRequest>().AddAsync(leave, ct);
         await unitOfWork.SaveChangesAsync(ct);
-        return await GetDtoAsync(leave.Id, ct);
+
+        var dto = await GetDtoAsync(leave.Id, ct);
+
+        await notifications.NotifyModuleAsync(
+            AppModule.Hr,
+            "Yeni məzuniyyət sorğusu",
+            $"{dto.EmployeeName}: {dto.StartDate} — {dto.EndDate}",
+            "/hr/leave-requests", ct);
+
+        return dto;
     }
 
     public async Task<LeaveRequestDto> DecideAsync(int id, DecideLeaveRequest request, CancellationToken ct = default)

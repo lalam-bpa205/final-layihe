@@ -23,6 +23,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.Entities.Inventory.Product> Products => Set<Domain.Entities.Inventory.Product>();
     public DbSet<Domain.Entities.Inventory.StockMovement> StockMovements => Set<Domain.Entities.Inventory.StockMovement>();
 
+    public DbSet<Domain.Entities.Transport.Vehicle> Vehicles => Set<Domain.Entities.Transport.Vehicle>();
+    public DbSet<Domain.Entities.Transport.Driver> Drivers => Set<Domain.Entities.Transport.Driver>();
+    public DbSet<Domain.Entities.Transport.Delivery> Deliveries => Set<Domain.Entities.Transport.Delivery>();
+    public DbSet<Domain.Entities.Transport.FuelRecord> FuelRecords => Set<Domain.Entities.Transport.FuelRecord>();
+    public DbSet<Domain.Entities.Transport.MaintenanceRecord> MaintenanceRecords => Set<Domain.Entities.Transport.MaintenanceRecord>();
+
+    public DbSet<Domain.Entities.Finance.TransactionCategory> TransactionCategories => Set<Domain.Entities.Finance.TransactionCategory>();
+    public DbSet<Domain.Entities.Finance.FinanceTransaction> FinanceTransactions => Set<Domain.Entities.Finance.FinanceTransaction>();
+    public DbSet<Domain.Entities.Finance.Budget> Budgets => Set<Domain.Entities.Finance.Budget>();
+    public DbSet<Domain.Entities.Finance.Invoice> Invoices => Set<Domain.Entities.Finance.Invoice>();
+    public DbSet<Domain.Entities.Finance.InvoiceItem> InvoiceItems => Set<Domain.Entities.Finance.InvoiceItem>();
+    public DbSet<Domain.Entities.Finance.Payment> Payments => Set<Domain.Entities.Finance.Payment>();
+
+    public DbSet<Domain.Entities.Sales.Customer> Customers => Set<Domain.Entities.Sales.Customer>();
+    public DbSet<Domain.Entities.Sales.Supplier> Suppliers => Set<Domain.Entities.Sales.Supplier>();
+    public DbSet<Domain.Entities.Sales.SalesOrder> SalesOrders => Set<Domain.Entities.Sales.SalesOrder>();
+    public DbSet<Domain.Entities.Sales.SalesOrderItem> SalesOrderItems => Set<Domain.Entities.Sales.SalesOrderItem>();
+    public DbSet<Domain.Entities.Sales.PurchaseOrder> PurchaseOrders => Set<Domain.Entities.Sales.PurchaseOrder>();
+    public DbSet<Domain.Entities.Sales.PurchaseOrderItem> PurchaseOrderItems => Set<Domain.Entities.Sales.PurchaseOrderItem>();
+
+    public DbSet<Domain.Entities.Notifications.Notification> Notifications => Set<Domain.Entities.Notifications.Notification>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
