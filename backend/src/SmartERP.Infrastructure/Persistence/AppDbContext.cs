@@ -44,6 +44,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.Entities.Sales.PurchaseOrderItem> PurchaseOrderItems => Set<Domain.Entities.Sales.PurchaseOrderItem>();
 
     public DbSet<Domain.Entities.Notifications.Notification> Notifications => Set<Domain.Entities.Notifications.Notification>();
+    public DbSet<Domain.Entities.Chat.ChatMessage> ChatMessages => Set<Domain.Entities.Chat.ChatMessage>();
+    public DbSet<Domain.Entities.Audit.AuditLog> AuditLogs => Set<Domain.Entities.Audit.AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

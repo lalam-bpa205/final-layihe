@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import api from '../../api/axios';
@@ -113,7 +114,7 @@ export default function InvoicesPage() {
       await api.post(`/invoices/${inv.id}/cancel`);
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Xəta baş verdi.');
+      notify.error(err.response?.data?.message ?? 'Xəta baş verdi.');
     }
   };
 

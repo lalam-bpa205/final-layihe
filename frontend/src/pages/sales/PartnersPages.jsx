@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
@@ -67,7 +68,7 @@ function PartnerPage({ title, singular, endpoint, orderLabel }) {
       await api.delete(`${endpoint}/${p.id}`);
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+      notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
     }
   };
 

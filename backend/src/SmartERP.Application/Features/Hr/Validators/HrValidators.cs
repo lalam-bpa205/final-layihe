@@ -41,6 +41,9 @@ public class SaveEmployeeRequestValidator : AbstractValidator<SaveEmployeeReques
         RuleFor(x => x.HireDate)
             .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.Today).AddDays(30))
             .WithMessage("İşə qəbul tarixi düzgün deyil.");
+        RuleFor(x => x.Address).MaximumLength(300).WithMessage("Ünvan 300 simvoldan çox ola bilməz.");
+        RuleFor(x => x.EmergencyContact).MaximumLength(100).WithMessage("Təcili əlaqə 100 simvoldan çox ola bilməz.");
+        RuleFor(x => x.Notes).MaximumLength(500).WithMessage("Qeydlər 500 simvoldan çox ola bilməz.");
 
         When(x => x.CreateUserAccount, () =>
         {

@@ -1,7 +1,9 @@
 import { Routes, Route } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import ModulesPage from './pages/ModulesPage';
+import HrDashboardPage from './pages/hr/HrDashboardPage';
 import EmployeesPage from './pages/hr/EmployeesPage';
+import EmployeeProfilePage from './pages/hr/EmployeeProfilePage';
 import DepartmentsPage from './pages/hr/DepartmentsPage';
 import PositionsPage from './pages/hr/PositionsPage';
 import AttendancePage from './pages/hr/AttendancePage';
@@ -22,6 +24,9 @@ import { CustomersPage, SuppliersPage } from './pages/sales/PartnersPages';
 import { SalesOrdersPage, PurchaseOrdersPage } from './pages/sales/OrdersPages';
 import ReportsPage from './pages/reports/ReportsPage';
 import AiChatPage from './pages/ai/AiChatPage';
+import ChatPage from './pages/ChatPage';
+import StatisticsPage from './pages/management/StatisticsPage';
+import AuditLogsPage from './pages/management/AuditLogsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -32,10 +37,13 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         {/* Modul seçim ekranı — sidebar-sız */}
         <Route path="/" element={<ModulesPage />} />
+        <Route path="/chat" element={<ChatPage />} />
 
         {/* Modul səhifələri — modul-əsaslı sidebar ilə */}
         <Route element={<Layout />}>
+          <Route path="/hr" element={<HrDashboardPage />} />
           <Route path="/hr/employees" element={<EmployeesPage />} />
+          <Route path="/hr/employees/:id" element={<EmployeeProfilePage />} />
           <Route path="/hr/departments" element={<DepartmentsPage />} />
           <Route path="/hr/positions" element={<PositionsPage />} />
           <Route path="/hr/attendance" element={<AttendancePage />} />
@@ -58,6 +66,8 @@ export default function App() {
           <Route path="/sales/suppliers" element={<SuppliersPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/ai" element={<AiChatPage />} />
+          <Route path="/management/statistics" element={<StatisticsPage />} />
+          <Route path="/management/logs" element={<AuditLogsPage />} />
         </Route>
       </Route>
     </Routes>

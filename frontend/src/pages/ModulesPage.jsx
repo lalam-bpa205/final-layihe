@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMe, logout } from '../features/auth/authSlice';
 import { MODULES } from '../modules';
-import AdminDashboard from '../components/AdminDashboard';
 import NotificationBell from '../components/NotificationBell';
+import ChatButton from '../components/ChatButton';
 
 export default function ModulesPage() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const userModules = user?.modules ?? [];
+  const isAdmin = user?.roles?.includes('SuperAdmin') || user?.roles?.includes('Admin');
 
   // Modul icazələri dəyişmiş ola bilər — hər dəfə serverdən təzələnir
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function ModulesPage() {
           <p className="text-xs text-slate-400 mt-0.5">Logistika İdarəetmə Sistemi</p>
         </div>
         <div className="flex items-center gap-4">
+          <ChatButton dark />
           <NotificationBell dark />
           <div className="text-right">
             <p className="text-sm font-medium text-white">
@@ -49,7 +51,7 @@ export default function ModulesPage() {
         <p className="text-slate-400 mb-8">İşləmək istədiyiniz modulu seçin.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {MODULES.map((m) => {
+          {MODULES.filter((m) => !m.adminOnly || isAdmin).map((m) => {
             const hasAccess = userModules.includes(m.key);
             const active = m.ready && hasAccess;
 
@@ -89,10 +91,6 @@ export default function ModulesPage() {
           })}
         </div>
 
-        {/* İdarəetmə paneli — yalnız SuperAdmin/Admin görür */}
-        {(user?.roles?.includes('SuperAdmin') || user?.roles?.includes('Admin')) && (
-          <AdminDashboard />
-        )}
       </main>
     </div>
   );

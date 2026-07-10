@@ -42,6 +42,10 @@ public class EmployeeDto
     public int PositionId { get; set; }
     public string PositionTitle { get; set; } = null!;
     public int? UserId { get; set; }
+    public string? Address { get; set; }
+    public string? EmergencyContact { get; set; }
+    public string? Notes { get; set; }
+    public EmployeeStatus Status { get; set; }
 }
 
 public record SaveEmployeeRequest(
@@ -57,7 +61,10 @@ public record SaveEmployeeRequest(
     bool CreateUserAccount = false,
     string? UserName = null,
     string? Password = null,
-    List<string>? Modules = null);
+    List<string>? Modules = null,
+    string? Address = null,
+    string? EmergencyContact = null,
+    string? Notes = null);
 
 public record SetEmployeeModulesRequest(List<string> Modules);
 
@@ -117,3 +124,83 @@ public record LeaveFilter(
     int PageSize = 10,
     LeaveStatus? Status = null,
     int? EmployeeId = null);
+
+// ---------- HR icmalı (summary) ----------
+public class HrSummaryDto
+{
+    public int Headcount { get; set; }
+    public int NewHiresThisMonth { get; set; }
+    public int OnLeaveToday { get; set; }
+    public int PendingLeaveCount { get; set; }
+    public List<BirthdayItemDto> BirthdaysThisMonth { get; set; } = [];
+    public List<DepartmentCountDto> DepartmentDistribution { get; set; } = [];
+    public AttendanceTodayDto AttendanceToday { get; set; } = new();
+}
+
+public class BirthdayItemDto
+{
+    public int EmployeeId { get; set; }
+    public string FullName { get; set; } = null!;
+    public DateOnly Date { get; set; }
+}
+
+public class DepartmentCountDto
+{
+    public string Name { get; set; } = null!;
+    public int Count { get; set; }
+}
+
+public class AttendanceTodayDto
+{
+    public int Present { get; set; }
+    public int Late { get; set; }
+    public int Absent { get; set; }
+    public int OnLeave { get; set; }
+}
+
+// ---------- İşçi profili ----------
+public class EmployeeProfileDto
+{
+    public EmployeeDto Employee { get; set; } = null!;
+    public AttendanceSummaryDto AttendanceSummary { get; set; } = new();
+    public LeaveBalanceDto LeaveBalance { get; set; } = new();
+    public List<LeaveRequestDto> RecentLeaves { get; set; } = [];
+    public List<AttendanceDto> RecentAttendance { get; set; } = [];
+}
+
+public class AttendanceSummaryDto
+{
+    public int PresentDays { get; set; }
+    public int LateDays { get; set; }
+    public int AbsentDays { get; set; }
+    public int OnLeaveDays { get; set; }
+}
+
+public class LeaveBalanceDto
+{
+    public int TotalDays { get; set; }
+    public int UsedDays { get; set; }
+    public int RemainingDays { get; set; }
+}
+
+// ---------- Aylıq davamiyyət cədvəli ----------
+public class MonthlyAttendanceDto
+{
+    public List<MonthlyAttendanceEmployeeDto> Employees { get; set; } = [];
+    public List<MonthlyAttendanceRecordDto> Records { get; set; } = [];
+}
+
+public class MonthlyAttendanceEmployeeDto
+{
+    public int EmployeeId { get; set; }
+    public string EmployeeName { get; set; } = null!;
+}
+
+public class MonthlyAttendanceRecordDto
+{
+    public int EmployeeId { get; set; }
+    public DateOnly Date { get; set; }
+    public int Status { get; set; }
+    public string? CheckIn { get; set; }
+    public string? CheckOut { get; set; }
+}

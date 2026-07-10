@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useRef, useState } from 'react';
 import api from '../../api/axios';
 
@@ -38,7 +39,7 @@ export default function ReportsPage() {
       const match = headers['content-disposition']?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/);
       downloadBlob(data, match?.[1] ?? `${key}.xlsx`);
     } catch {
-      alert('Hesabatı yükləmək mümkün olmadı.');
+      notify.error('Hesabatı yükləmək mümkün olmadı.');
     } finally {
       setBusy(null);
     }

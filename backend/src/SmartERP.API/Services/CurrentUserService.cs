@@ -12,4 +12,8 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 
     public string? UserName =>
         httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
+
+    public bool IsAdmin =>
+        httpContextAccessor.HttpContext?.User is { } user &&
+        (user.IsInRole("SuperAdmin") || user.IsInRole("Admin"));
 }

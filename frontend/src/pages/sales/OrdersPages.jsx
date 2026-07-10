@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import api from '../../api/axios';
@@ -116,7 +117,7 @@ function OrdersPage({ kind }) {
       await api.post(`${endpoint}/${order.id}/${action}`);
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Xəta baş verdi.');
+      notify.error(err.response?.data?.message ?? 'Xəta baş verdi.');
     }
   };
 

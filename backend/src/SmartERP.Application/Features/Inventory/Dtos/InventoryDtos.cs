@@ -96,3 +96,60 @@ public record StockMovementFilter(
     int? ProductId = null,
     int? WarehouseId = null,
     StockMovementType? Type = null);
+
+// ---------- Analitika: modul icmalı ----------
+public class InventorySummaryDto
+{
+    public int ProductCount { get; set; }
+    public int CategoryCount { get; set; }
+    public int WarehouseCount { get; set; }
+    public int LowStockCount { get; set; }
+    public decimal TotalStockValue { get; set; }
+    public int MovementsThisMonth { get; set; }
+    public List<WarehouseStockValueDto> StockByWarehouse { get; set; } = [];
+    public List<CategoryDistributionDto> CategoryDistribution { get; set; } = [];
+    public List<StockMovementDto> RecentMovements { get; set; } = [];
+    public List<ProductDto> LowStockProducts { get; set; } = [];
+}
+
+public class WarehouseStockValueDto
+{
+    public string Name { get; set; } = null!;
+    public decimal Value { get; set; }
+}
+
+public class CategoryDistributionDto
+{
+    public string Name { get; set; } = null!;
+    public int ProductCount { get; set; }
+}
+
+// ---------- Analitika: məhsul detalları ----------
+public class ProductDetailsDto
+{
+    public ProductDto Product { get; set; } = null!;
+    public List<ProductWarehouseStockDto> StockByWarehouse { get; set; } = [];
+    public ProductMonthlyStatsDto MonthlyStats { get; set; } = null!;
+    public List<StockHistoryPointDto> StockHistory { get; set; } = [];
+    public List<StockMovementDto> RecentMovements { get; set; } = [];
+}
+
+public class ProductWarehouseStockDto
+{
+    public int WarehouseId { get; set; }
+    public string WarehouseName { get; set; } = null!;
+    public decimal Quantity { get; set; }
+}
+
+public class ProductMonthlyStatsDto
+{
+    public decimal InQty { get; set; }
+    public decimal OutQty { get; set; }
+    public int MovementCount { get; set; }
+}
+
+public class StockHistoryPointDto
+{
+    public string Date { get; set; } = null!;  // yyyy-MM-dd
+    public decimal Balance { get; set; }
+}

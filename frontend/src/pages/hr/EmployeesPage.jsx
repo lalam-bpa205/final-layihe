@@ -1,8 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import Modal from '../../components/Modal';
 import { MODULES } from '../../modules';
+import { notify } from '../../notify';
+import {
+  PageHeader,
+  Avatar,
+  Button,
+  Input,
+  Select,
+  Textarea,
+  SlideOver,
+  EmptyState,
+  SkeletonRows,
+  ConfirmDialog,
+  EmployeeStatusBadge,
+} from '../../components/ui';
 
 function ModuleSelector({ selected, onToggle }) {
   return (
@@ -11,12 +26,12 @@ function ModuleSelector({ selected, onToggle }) {
         Hesabın görə biləcəyi modullar
       </p>
       <div className="grid grid-cols-2 gap-2">
-        {MODULES.map((m) => (
+        {MODULES.filter((m) => !m.adminOnly).map((m) => (
           <label
             key={m.key}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${
+            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer transition-colors ${
               selected.includes(m.key)
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                 : 'border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
@@ -36,26 +51,49 @@ function ModuleSelector({ selected, onToggle }) {
 }
 
 export default function EmployeesPage() {
+  const navigate = useNavigate();
   const [result, setResult] = useState({ items: [], totalCount: 0, totalPages: 0, page: 1 });
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [departments, setDepartments] = useState([]);
   const [positions, setPositions] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
   const [selModules, setSelModules] = useState([]);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const { register, handleSubmit, reset, watch } = useForm();
+  // Modul icazələrini yalnız admin görür və dəyişir
+  const { user } = useSelector((state) => state.auth);
+  const isAdmin = user?.roles?.includes('SuperAdmin') || user?.roles?.includes('Admin');
+
+  const { register, handleSubmit, reset, watch, formState } = useForm();
   const selectedDept = watch('departmentId');
   const createAccount = watch('createUserAccount');
+
+  // Axtarış debounce (300ms)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const load = useCallback(() => {
     const params = { page, pageSize: 10 };
     if (search) params.search = search;
     if (departmentId) params.departmentId = departmentId;
-    api.get('/employees', { params }).then(({ data }) => setResult(data));
+    setLoading(true);
+    api
+      .get('/employees', { params })
+      .then(({ data }) => setResult(data))
+      .catch(() => notify.error('İşçilər yüklənə bilmədi.'))
+      .finally(() => setLoading(false));
   }, [page, search, departmentId]);
 
   useEffect(() => {
@@ -77,11 +115,12 @@ export default function EmployeesPage() {
       firstName: '', lastName: '', email: '', phone: '',
       birthDate: '', hireDate: new Date().toISOString().slice(0, 10),
       salary: '', departmentId: '', positionId: '',
+      address: '', emergencyContact: '', notes: '',
       createUserAccount: false, userName: '', password: '',
     });
     setSelModules([]);
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const openEdit = async (e) => {
@@ -90,14 +129,15 @@ export default function EmployeesPage() {
       firstName: e.firstName, lastName: e.lastName, email: e.email,
       phone: e.phone ?? '', birthDate: e.birthDate ?? '', hireDate: e.hireDate,
       salary: e.salary, departmentId: e.departmentId, positionId: e.positionId,
+      address: e.address ?? '', emergencyContact: e.emergencyContact ?? '', notes: e.notes ?? '',
       createUserAccount: false, userName: '', password: '',
     });
     setSelModules([]);
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
 
-    // Hesabı olan işçinin mövcud modul icazələri yüklənir
-    if (e.userId) {
+    // Hesabı olan işçinin mövcud modul icazələri yüklənir (yalnız admin)
+    if (e.userId && isAdmin) {
       const { data } = await api.get(`/employees/${e.id}/modules`);
       setSelModules(data);
     }
@@ -116,6 +156,9 @@ export default function EmployeesPage() {
       positionId: Number(values.positionId),
       birthDate: values.birthDate || null,
       phone: values.phone || null,
+      address: values.address || null,
+      emergencyContact: values.emergencyContact || null,
+      notes: values.notes || null,
       userName: values.userName || null,
       password: values.password || null,
       modules: selModules,
@@ -123,14 +166,15 @@ export default function EmployeesPage() {
     try {
       if (editing) {
         await api.put(`/employees/${editing.id}`, payload);
-        // Hesabı varsa modul icazələri də yenilənir
-        if (editing.userId) {
+        // Hesabı varsa modul icazələri də yenilənir (yalnız admin)
+        if (editing.userId && isAdmin) {
           await api.put(`/employees/${editing.id}/modules`, { modules: selModules });
         }
       } else {
         await api.post('/employees', payload);
       }
-      setModalOpen(false);
+      setPanelOpen(false);
+      notify.success(editing ? 'İşçi məlumatları yeniləndi.' : 'Yeni işçi əlavə olundu.');
       load();
     } catch (err) {
       const data = err.response?.data;
@@ -142,37 +186,46 @@ export default function EmployeesPage() {
     }
   };
 
-  const onDelete = async (e) => {
-    if (!confirm(`${e.firstName} ${e.lastName} işçisini silmək istədiyinizə əminsiniz?`)) return;
-    await api.delete(`/employees/${e.id}`);
-    load();
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/employees/${deleting.id}`);
+      notify.success('İşçi silindi.');
+      setDeleting(null);
+      load();
+    } catch (err) {
+      notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
-  const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2';
-  const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
+  const hasFilters = Boolean(search || departmentId);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">İşçilər</h2>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
-        >
-          + Yeni işçi
-        </button>
-      </div>
+      <PageHeader
+        title="İşçilər"
+        description="Şirkət heyətinin siyahısı, axtarış və idarəetmə"
+        actions={<Button onClick={openCreate}>+ Yeni işçi</Button>}
+      />
 
       {/* Filtrlər */}
       <div className="flex flex-wrap gap-3 mb-4">
-        <input
-          placeholder="Ad, soyad və ya email üzrə axtar..."
-          className="rounded-lg border border-slate-300 px-3 py-2 w-72"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        />
-        <select
-          className="rounded-lg border border-slate-300 px-3 py-2"
+        <div className="relative w-80 max-w-full">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+            🔍
+          </span>
+          <input
+            placeholder="Ad, soyad və ya email üzrə axtar..."
+            className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+        <Select
+          className="w-52"
           value={departmentId}
           onChange={(e) => { setDepartmentId(e.target.value); setPage(1); }}
         >
@@ -180,142 +233,161 @@ export default function EmployeesPage() {
           {departments.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <div className="bg-white rounded-2xl shadow overflow-x-auto">
+      <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-slate-50/80 text-slate-500">
             <tr>
-              <th className="text-left px-6 py-3 font-semibold">Ad Soyad</th>
-              <th className="text-left px-6 py-3 font-semibold">Email</th>
-              <th className="text-left px-6 py-3 font-semibold">Şöbə</th>
-              <th className="text-left px-6 py-3 font-semibold">Vəzifə</th>
-              <th className="text-left px-6 py-3 font-semibold">Maaş</th>
-              <th className="text-left px-6 py-3 font-semibold">İşə qəbul</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">İşçi</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Əlaqə</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Şöbə</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Status</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Maaş</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">İşə qəbul</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {result.items.map((e) => (
-              <tr key={e.id} className="hover:bg-slate-50">
-                <td className="px-6 py-3 font-medium text-slate-800">
-                  {e.firstName} {e.lastName}
-                </td>
-                <td className="px-6 py-3 text-slate-500">{e.email}</td>
-                <td className="px-6 py-3">{e.departmentName}</td>
-                <td className="px-6 py-3">{e.positionTitle}</td>
-                <td className="px-6 py-3">{e.salary.toLocaleString()} ₼</td>
-                <td className="px-6 py-3">{e.hireDate}</td>
-                <td className="px-6 py-3 text-right space-x-2 whitespace-nowrap">
-                  <button onClick={() => openEdit(e)} className="text-blue-600 hover:underline">
-                    Redaktə
-                  </button>
-                  <button onClick={() => onDelete(e)} className="text-red-600 hover:underline">
-                    Sil
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {result.items.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
-                  İşçi tapılmadı.
-                </td>
-              </tr>
+            {loading ? (
+              <SkeletonRows rows={6} cols={7} withAvatar />
+            ) : (
+              result.items.map((e) => (
+                <tr
+                  key={e.id}
+                  onClick={() => navigate(`/hr/employees/${e.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/40"
+                >
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={`${e.firstName} ${e.lastName}`} />
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-800 truncate">
+                          {e.firstName} {e.lastName}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">{e.positionTitle}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-500">
+                    <p className="truncate max-w-52">{e.email}</p>
+                    {e.phone && <p className="text-xs text-slate-400">{e.phone}</p>}
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-600">{e.departmentName}</td>
+                  <td className="px-6 py-3.5">
+                    <EmployeeStatusBadge status={e.status ?? 1} />
+                  </td>
+                  <td className="px-6 py-3.5 font-medium text-slate-700 tabular-nums whitespace-nowrap">
+                    {Number(e.salary).toLocaleString('az-AZ')} ₼
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap">{e.hireDate}</td>
+                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                    <span className="inline-flex gap-1" onClick={(ev) => ev.stopPropagation()}>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>
+                        Redaktə
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setDeleting(e)}
+                      >
+                        Sil
+                      </Button>
+                    </span>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
+        {!loading && result.items.length === 0 && (
+          <EmptyState
+            icon="👥"
+            title={hasFilters ? 'Nəticə tapılmadı' : 'Hələ işçi yoxdur'}
+            description={
+              hasFilters
+                ? 'Axtarış və ya filtr şərtlərinə uyğun işçi tapılmadı.'
+                : 'İlk işçini əlavə edərək komandanı qurmağa başlayın.'
+            }
+            action={!hasFilters && <Button onClick={openCreate}>+ Yeni işçi</Button>}
+          />
+        )}
       </div>
 
       {/* Pagination */}
       <div className="flex items-center justify-between mt-4 text-sm text-slate-600">
         <span>Cəmi: {result.totalCount} işçi</span>
-        <div className="space-x-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40 bg-white"
-          >
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
             ← Əvvəlki
-          </button>
-          <span>
+          </Button>
+          <span className="px-1 tabular-nums">
             Səhifə {result.page} / {Math.max(result.totalPages, 1)}
           </span>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={page >= result.totalPages}
             onClick={() => setPage(page + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40 bg-white"
           >
             Növbəti →
-          </button>
+          </Button>
         </div>
       </div>
 
-      <Modal
-        open={modalOpen}
+      <SlideOver
+        open={panelOpen}
         title={editing ? 'İşçini redaktə et' : 'Yeni işçi'}
-        onClose={() => setModalOpen(false)}
+        subtitle={editing ? `${editing.firstName} ${editing.lastName}` : 'Yeni komanda üzvünün məlumatları'}
+        onClose={() => setPanelOpen(false)}
       >
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-sm">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Ad *</label>
-              <input className={inputCls} {...register('firstName', { required: true })} />
-            </div>
-            <div>
-              <label className={labelCls}>Soyad *</label>
-              <input className={inputCls} {...register('lastName', { required: true })} />
-            </div>
+            <Input label="Ad" required {...register('firstName', { required: true })} />
+            <Input label="Soyad" required {...register('lastName', { required: true })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Email *</label>
-              <input type="email" className={inputCls} {...register('email', { required: true })} />
-            </div>
-            <div>
-              <label className={labelCls}>Telefon</label>
-              <input className={inputCls} {...register('phone')} />
-            </div>
+            <Input label="Email" required type="email" {...register('email', { required: true })} />
+            <Input label="Telefon" {...register('phone')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Şöbə *</label>
-              <select className={inputCls} {...register('departmentId', { required: true })}>
-                <option value="">Seçin...</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Vəzifə *</label>
-              <select className={inputCls} {...register('positionId', { required: true })}>
-                <option value="">Seçin...</option>
-                {filteredPositions.map((p) => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
-                ))}
-              </select>
-            </div>
+            <Select label="Şöbə" required {...register('departmentId', { required: true })}>
+              <option value="">Seçin...</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </Select>
+            <Select label="Vəzifə" required {...register('positionId', { required: true })}>
+              <option value="">Seçin...</option>
+              {filteredPositions.map((p) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </Select>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className={labelCls}>Doğum tarixi</label>
-              <input type="date" className={inputCls} {...register('birthDate')} />
-            </div>
-            <div>
-              <label className={labelCls}>İşə qəbul *</label>
-              <input type="date" className={inputCls} {...register('hireDate', { required: true })} />
-            </div>
-            <div>
-              <label className={labelCls}>Maaş (₼) *</label>
-              <input type="number" step="0.01" className={inputCls} {...register('salary', { required: true })} />
-            </div>
+            <Input label="Doğum tarixi" type="date" {...register('birthDate')} />
+            <Input label="İşə qəbul" required type="date" {...register('hireDate', { required: true })} />
+            <Input label="Maaş (₼)" required type="number" step="0.01" {...register('salary', { required: true })} />
+          </div>
+
+          <div className="border-t border-slate-200 pt-4 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Əlavə məlumatlar
+            </p>
+            <Input label="Ünvan" placeholder="Yaşayış ünvanı" {...register('address')} />
+            <Input
+              label="Təcili əlaqə"
+              placeholder="Ad və telefon nömrəsi"
+              {...register('emergencyContact')}
+            />
+            <Textarea label="Qeydlər" placeholder="Daxili qeydlər..." {...register('notes')} />
           </div>
 
           {!editing && (
@@ -327,32 +399,40 @@ export default function EmployeesPage() {
               {createAccount && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className={labelCls}>İstifadəçi adı *</label>
-                      <input className={inputCls} {...register('userName')} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Şifrə *</label>
-                      <input type="password" className={inputCls} {...register('password')} />
-                    </div>
+                    <Input label="İstifadəçi adı" required {...register('userName')} />
+                    <Input label="Şifrə" required type="password" {...register('password')} />
                   </div>
-                  <ModuleSelector selected={selModules} onToggle={toggleModule} />
+                  {isAdmin && <ModuleSelector selected={selModules} onToggle={toggleModule} />}
                 </>
               )}
             </div>
           )}
 
-          {editing && editing.userId && (
+          {editing && editing.userId && isAdmin && (
             <div className="border-t border-slate-200 pt-4">
               <ModuleSelector selected={selModules} onToggle={toggleModule} />
             </div>
           )}
 
-          <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2">
+          <Button type="submit" className="w-full" loading={formState.isSubmitting}>
             Yadda saxla
-          </button>
+          </Button>
         </form>
-      </Modal>
+      </SlideOver>
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="İşçini sil"
+        message={
+          deleting
+            ? `${deleting.firstName} ${deleting.lastName} işçisini silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla bilməz.`
+            : ''
+        }
+        confirmText="Sil"
+        loading={deleteLoading}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

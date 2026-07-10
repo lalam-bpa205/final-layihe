@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
@@ -48,7 +49,7 @@ export default function CategoriesPage() {
       await api.delete(`/categories/${c.id}`);
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+      notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
     }
   };
 

@@ -5,10 +5,11 @@ export const MODULES = [
     label: 'İnsan Resursları',
     icon: '👥',
     description: 'İşçilər, şöbələr, davamiyyət və məzuniyyətlər',
-    path: '/hr/employees',
+    path: '/hr',
     basePath: '/hr',
     ready: true,
     nav: [
+      { to: '/hr', label: 'İcmal', icon: '🏠' },
       { to: '/hr/employees', label: 'İşçilər', icon: '👥' },
       { to: '/hr/departments', label: 'Şöbələr', icon: '🏢' },
       { to: '/hr/positions', label: 'Vəzifələr', icon: '💼' },
@@ -100,6 +101,21 @@ MODULES.push({
   ready: true,
   nav: [
     { to: '/ai', label: 'AI Köməkçi', icon: '🤖' },
+  ],
+});
+
+MODULES.push({
+  key: 'Management',
+  label: 'İdarəetmə paneli',
+  icon: '📊',
+  description: 'Statistika, KPI göstəriciləri və sistem logları',
+  path: '/management/statistics',
+  basePath: '/management',
+  ready: true,
+  adminOnly: true, // yalnız SuperAdmin/Admin görür, işçilərə icazə kimi verilmir
+  nav: [
+    { to: '/management/statistics', label: 'Statistika', icon: '📊' },
+    { to: '/management/logs', label: 'Log mərkəzi', icon: '📜' },
   ],
 });
 

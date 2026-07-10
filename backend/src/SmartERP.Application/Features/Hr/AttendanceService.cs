@@ -12,6 +12,7 @@ namespace SmartERP.Application.Features.Hr;
 public interface IAttendanceService
 {
     Task<List<AttendanceDto>> GetByDateAsync(DateOnly date, int? departmentId = null, CancellationToken ct = default);
+    Task<MonthlyAttendanceDto> GetMonthlyAsync(int year, int month, int? departmentId = null, CancellationToken ct = default);
     Task<AttendanceDto> CheckInAsync(CheckInRequest request, CancellationToken ct = default);
     Task<AttendanceDto> CheckOutAsync(CheckOutRequest request, CancellationToken ct = default);
 }
@@ -33,10 +34,61 @@ public class AttendanceService(IUnitOfWork unitOfWork, IMapper mapper) : IAttend
             .ToListAsync(ct);
     }
 
+    public async Task<MonthlyAttendanceDto> GetMonthlyAsync(int year, int month, int? departmentId = null, CancellationToken ct = default)
+    {
+        if (month is < 1 or > 12)
+            throw new ConflictException("Ay dəyəri 1-12 aralığında olmalıdır.");
+
+        var monthStart = new DateOnly(year, month, 1);
+        var nextMonthStart = monthStart.AddMonths(1);
+
+        // Aktiv (işdən çıxmamış) işçilər
+        var employeeQuery = unitOfWork.Repository<Employee>().Query()
+            .Where(e => e.Status != EmployeeStatus.Terminated);
+        if (departmentId is not null)
+            employeeQuery = employeeQuery.Where(e => e.DepartmentId == departmentId);
+
+        var employees = await employeeQuery
+            .OrderBy(e => e.FirstName).ThenBy(e => e.LastName)
+            .Select(e => new MonthlyAttendanceEmployeeDto
+            {
+                EmployeeId = e.Id,
+                EmployeeName = e.FirstName + " " + e.LastName
+            })
+            .ToListAsync(ct);
+
+        var recordQuery = unitOfWork.Repository<Attendance>().Query()
+            .Where(a => a.Date >= monthStart && a.Date < nextMonthStart);
+        if (departmentId is not null)
+            recordQuery = recordQuery.Where(a => a.Employee.DepartmentId == departmentId);
+
+        var rawRecords = await recordQuery
+            .OrderBy(a => a.Date)
+            .Select(a => new { a.EmployeeId, a.Date, a.Status, a.CheckIn, a.CheckOut })
+            .ToListAsync(ct);
+
+        return new MonthlyAttendanceDto
+        {
+            Employees = employees,
+            Records = rawRecords.Select(r => new MonthlyAttendanceRecordDto
+            {
+                EmployeeId = r.EmployeeId,
+                Date = r.Date,
+                Status = (int)r.Status,
+                CheckIn = r.CheckIn?.ToString("HH:mm:ss"),
+                CheckOut = r.CheckOut?.ToString("HH:mm:ss")
+            }).ToList()
+        };
+    }
+
     public async Task<AttendanceDto> CheckInAsync(CheckInRequest request, CancellationToken ct = default)
     {
-        if (!await unitOfWork.Repository<Employee>().AnyAsync(e => e.Id == request.EmployeeId, ct))
-            throw new NotFoundException("İşçi", request.EmployeeId);
+        var employee = await unitOfWork.Repository<Employee>().GetByIdAsync(request.EmployeeId, ct)
+            ?? throw new NotFoundException("İşçi", request.EmployeeId);
+
+        // İşdən çıxmış işçi check-in edə bilməz
+        if (employee.Status == EmployeeStatus.Terminated)
+            throw new ConflictException("İşdən çıxmış işçi check-in edə bilməz.");
 
         var today = DateOnly.FromDateTime(DateTime.Now);
         var now = TimeOnly.FromDateTime(DateTime.Now);

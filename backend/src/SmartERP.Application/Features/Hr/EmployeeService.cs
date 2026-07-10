@@ -21,6 +21,8 @@ public interface IEmployeeService
     Task<EmployeeDto> CreateAsync(SaveEmployeeRequest request, CancellationToken ct = default);
     Task<EmployeeDto> UpdateAsync(int id, SaveEmployeeRequest request, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
+    Task<EmployeeDto> SetStatusAsync(int id, EmployeeStatus status, CancellationToken ct = default);
+    Task<EmployeeProfileDto> GetProfileAsync(int id, CancellationToken ct = default);
     Task<List<string>> GetModulesAsync(int id, CancellationToken ct = default);
     Task SetModulesAsync(int id, SetEmployeeModulesRequest request, CancellationToken ct = default);
 }
@@ -29,6 +31,7 @@ public class EmployeeService(
     IUnitOfWork unitOfWork,
     IMapper mapper,
     IPasswordHasher passwordHasher,
+    ICurrentUserService currentUser,
     IValidator<SaveEmployeeRequest> validator) : IEmployeeService
 {
     public async Task<PagedResult<EmployeeDto>> GetPagedAsync(EmployeeFilter filter, CancellationToken ct = default)
@@ -94,7 +97,10 @@ public class EmployeeService(
                 HireDate = request.HireDate,
                 Salary = request.Salary,
                 DepartmentId = request.DepartmentId,
-                PositionId = request.PositionId
+                PositionId = request.PositionId,
+                Address = request.Address,
+                EmergencyContact = request.EmergencyContact,
+                Notes = request.Notes
             };
 
             if (request.CreateUserAccount)
@@ -117,9 +123,12 @@ public class EmployeeService(
                     UserRoles = { new UserRole { Role = employeeRole } }
                 };
 
-                // Seçilmiş modul icazələri
-                foreach (var module in ParseModules(request.Modules))
-                    newEmployee.User.ModuleAccesses.Add(new UserModuleAccess { Module = module });
+                // Modul icazələrini yalnız admin təyin edə bilər
+                if (currentUser.IsAdmin)
+                {
+                    foreach (var module in ParseModules(request.Modules))
+                        newEmployee.User.ModuleAccesses.Add(new UserModuleAccess { Module = module });
+                }
             }
 
             await unitOfWork.Repository<Employee>().AddAsync(newEmployee, token);
@@ -147,9 +156,90 @@ public class EmployeeService(
         employee.Salary = request.Salary;
         employee.DepartmentId = request.DepartmentId;
         employee.PositionId = request.PositionId;
+        employee.Address = request.Address;
+        employee.EmergencyContact = request.EmergencyContact;
+        employee.Notes = request.Notes;
 
         await unitOfWork.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
+    }
+
+    public async Task<EmployeeDto> SetStatusAsync(int id, EmployeeStatus status, CancellationToken ct = default)
+    {
+        if (!Enum.IsDefined(status))
+            throw new ConflictException("Yanlış işçi statusu.");
+
+        var employee = await unitOfWork.Repository<Employee>().GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("İşçi", id);
+
+        employee.Status = status;
+        await unitOfWork.SaveChangesAsync(ct);
+        return await GetByIdAsync(id, ct);
+    }
+
+    public async Task<EmployeeProfileDto> GetProfileAsync(int id, CancellationToken ct = default)
+    {
+        var employee = await GetByIdAsync(id, ct);
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        var nextMonthStart = monthStart.AddMonths(1);
+        var yearStart = new DateOnly(today.Year, 1, 1);
+        var nextYearStart = yearStart.AddYears(1);
+
+        var attendanceRepo = unitOfWork.Repository<Attendance>();
+        var leaveRepo = unitOfWork.Repository<LeaveRequest>();
+
+        // Cari ayın davamiyyət xülasəsi
+        var monthCounts = await attendanceRepo.Query()
+            .Where(a => a.EmployeeId == id && a.Date >= monthStart && a.Date < nextMonthStart)
+            .GroupBy(a => a.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        // Cari ilin təsdiqlənmiş illik (Annual) məzuniyyət günləri
+        var annualLeaves = await leaveRepo.Query()
+            .Where(lr => lr.EmployeeId == id &&
+                         lr.Type == LeaveType.Annual &&
+                         lr.Status == LeaveStatus.Approved &&
+                         lr.StartDate >= yearStart && lr.StartDate < nextYearStart)
+            .Select(lr => new { lr.StartDate, lr.EndDate })
+            .ToListAsync(ct);
+        var usedDays = annualLeaves.Sum(l => l.EndDate.DayNumber - l.StartDate.DayNumber + 1);
+
+        var recentLeaves = await leaveRepo.Query()
+            .Where(lr => lr.EmployeeId == id)
+            .OrderByDescending(lr => lr.Id)
+            .Take(5)
+            .ProjectTo<LeaveRequestDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        var recentAttendance = await attendanceRepo.Query()
+            .Where(a => a.EmployeeId == id)
+            .OrderByDescending(a => a.Date)
+            .Take(10)
+            .ProjectTo<AttendanceDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        return new EmployeeProfileDto
+        {
+            Employee = employee,
+            AttendanceSummary = new AttendanceSummaryDto
+            {
+                PresentDays = monthCounts.FirstOrDefault(c => c.Status == AttendanceStatus.Present)?.Count ?? 0,
+                LateDays = monthCounts.FirstOrDefault(c => c.Status == AttendanceStatus.Late)?.Count ?? 0,
+                AbsentDays = 0,
+                OnLeaveDays = monthCounts.FirstOrDefault(c => c.Status == AttendanceStatus.OnLeave)?.Count ?? 0
+            },
+            LeaveBalance = new LeaveBalanceDto
+            {
+                TotalDays = LeaveRequestService.AnnualLeaveAllowanceDays,
+                UsedDays = usedDays,
+                RemainingDays = Math.Max(0, LeaveRequestService.AnnualLeaveAllowanceDays - usedDays)
+            },
+            RecentLeaves = recentLeaves,
+            RecentAttendance = recentAttendance
+        };
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
@@ -209,6 +299,11 @@ public class EmployeeService(
         {
             if (!Enum.TryParse<AppModule>(name, ignoreCase: true, out var module))
                 throw new ConflictException($"'{name}' adlı modul mövcud deyil.");
+
+            // İdarəetmə paneli yalnız adminlərə məxsusdur — icazə kimi verilə bilməz
+            if (module == AppModule.Management)
+                throw new ConflictException("İdarəetmə paneli işçilərə icazə kimi verilə bilməz.");
+
             result.Add(module);
         }
         return result;

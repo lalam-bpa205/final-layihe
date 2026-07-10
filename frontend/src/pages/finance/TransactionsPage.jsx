@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
@@ -72,7 +73,7 @@ export default function TransactionsPage() {
       await api.delete(`/finance/transactions/${t.id}`);
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+      notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
     }
   };
 

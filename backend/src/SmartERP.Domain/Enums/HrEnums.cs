@@ -17,6 +17,13 @@ public enum LeaveType
     Other = 5
 }
 
+public enum EmployeeStatus
+{
+    Active = 1,
+    OnLeave = 2,
+    Terminated = 3
+}
+
 public enum LeaveStatus
 {
     Pending = 1,

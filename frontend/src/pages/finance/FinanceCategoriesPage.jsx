@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
@@ -41,7 +42,7 @@ export default function FinanceCategoriesPage() {
       await api.delete(`/finance/categories/${c.id}`);
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+      notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
     }
   };
 

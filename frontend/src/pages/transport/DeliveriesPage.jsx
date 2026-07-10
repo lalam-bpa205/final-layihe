@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
@@ -86,7 +87,7 @@ export default function DeliveriesPage() {
       load();
       loadRefs();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Xəta baş verdi.');
+      notify.error(err.response?.data?.message ?? 'Xəta baş verdi.');
     }
   };
 

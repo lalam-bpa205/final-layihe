@@ -17,6 +17,12 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
         Ok(await attendanceService.GetByDateAsync(
             date ?? DateOnly.FromDateTime(DateTime.Now), departmentId, ct));
 
+    // Aylıq davamiyyət cədvəli
+    [HttpGet("monthly")]
+    public async Task<ActionResult<MonthlyAttendanceDto>> GetMonthly(
+        [FromQuery] int year, [FromQuery] int month, [FromQuery] int? departmentId, CancellationToken ct) =>
+        Ok(await attendanceService.GetMonthlyAsync(year, month, departmentId, ct));
+
     [HttpPost("check-in")]
     public async Task<ActionResult<AttendanceDto>> CheckIn(CheckInRequest request, CancellationToken ct) =>
         Ok(await attendanceService.CheckInAsync(request, ct));

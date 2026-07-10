@@ -26,6 +26,9 @@ public class LeaveRequestService(
     INotificationService notifications,
     IValidator<CreateLeaveRequest> validator) : ILeaveRequestService
 {
+    /// <summary>İllik (Annual) məzuniyyət limiti — işçi başına ildə 21 gün.</summary>
+    public const int AnnualLeaveAllowanceDays = 21;
+
     public async Task<PagedResult<LeaveRequestDto>> GetPagedAsync(LeaveFilter filter, CancellationToken ct = default)
     {
         var query = unitOfWork.Repository<LeaveRequest>().Query();
@@ -45,8 +48,12 @@ public class LeaveRequestService(
     {
         await validator.ValidateAndThrowAsync(request, ct);
 
-        if (!await unitOfWork.Repository<Employee>().AnyAsync(e => e.Id == request.EmployeeId, ct))
-            throw new NotFoundException("İşçi", request.EmployeeId);
+        var employee = await unitOfWork.Repository<Employee>().GetByIdAsync(request.EmployeeId, ct)
+            ?? throw new NotFoundException("İşçi", request.EmployeeId);
+
+        // İşdən çıxmış işçiyə yeni məzuniyyət yaradıla bilməz
+        if (employee.Status == EmployeeStatus.Terminated)
+            throw new ConflictException("İşdən çıxmış işçi üçün yeni məzuniyyət yaradıla bilməz.");
 
         // Üst-üstə düşən aktiv (gözləyən/təsdiqlənmiş) məzuniyyət yoxlanışı
         var overlaps = await unitOfWork.Repository<LeaveRequest>().AnyAsync(lr =>
@@ -56,6 +63,29 @@ public class LeaveRequestService(
 
         if (overlaps)
             throw new ConflictException("Bu tarix aralığında artıq məzuniyyət sorğusu mövcuddur.");
+
+        // İllik məzuniyyət balansı yoxlanışı — cari ildəki approved + pending Annual günlər
+        if (request.Type == LeaveType.Annual)
+        {
+            var year = DateTime.Today.Year;
+            var yearStart = new DateOnly(year, 1, 1);
+            var nextYearStart = yearStart.AddYears(1);
+
+            var existingAnnual = await unitOfWork.Repository<LeaveRequest>().Query()
+                .Where(lr => lr.EmployeeId == request.EmployeeId &&
+                             lr.Type == LeaveType.Annual &&
+                             (lr.Status == LeaveStatus.Pending || lr.Status == LeaveStatus.Approved) &&
+                             lr.StartDate >= yearStart && lr.StartDate < nextYearStart)
+                .Select(lr => new { lr.StartDate, lr.EndDate })
+                .ToListAsync(ct);
+
+            var usedDays = existingAnnual.Sum(l => l.EndDate.DayNumber - l.StartDate.DayNumber + 1);
+            var requestedDays = request.EndDate.DayNumber - request.StartDate.DayNumber + 1;
+
+            if (usedDays + requestedDays > AnnualLeaveAllowanceDays)
+                throw new ConflictException(
+                    $"İllik məzuniyyət balansı kifayət etmir. Qalıq: {Math.Max(0, AnnualLeaveAllowanceDays - usedDays)} gün.");
+        }
 
         var leave = new LeaveRequest
         {

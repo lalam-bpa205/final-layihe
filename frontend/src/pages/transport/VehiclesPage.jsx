@@ -1,3 +1,4 @@
+import { notify } from '../../notify';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
@@ -71,7 +72,7 @@ export default function VehiclesPage() {
       });
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Xəta baş verdi.');
+      notify.error(err.response?.data?.message ?? 'Xəta baş verdi.');
     }
   };
 

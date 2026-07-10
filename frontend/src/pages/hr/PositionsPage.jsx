@@ -1,19 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
-import Modal from '../../components/Modal';
+import { notify } from '../../notify';
+import {
+  PageHeader,
+  Button,
+  Input,
+  Select,
+  Textarea,
+  SlideOver,
+  EmptyState,
+  SkeletonRows,
+  ConfirmDialog,
+} from '../../components/ui';
 
 export default function PositionsPage() {
   const [positions, setPositions] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
   const load = () =>
-    api.get('/positions').then(({ data }) => setPositions(data));
+    api
+      .get('/positions')
+      .then(({ data }) => setPositions(data))
+      .catch(() => notify.error('Vəzifələr yüklənə bilmədi.'))
+      .finally(() => setLoading(false));
 
   useEffect(() => {
     load();
@@ -24,14 +42,14 @@ export default function PositionsPage() {
     setEditing(null);
     reset({ title: '', description: '', departmentId: '' });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const openEdit = (p) => {
     setEditing(p);
     reset({ title: p.title, description: p.description ?? '', departmentId: p.departmentId });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const onSubmit = async (values) => {
@@ -39,117 +57,132 @@ export default function PositionsPage() {
     try {
       if (editing) await api.put(`/positions/${editing.id}`, payload);
       else await api.post('/positions', payload);
-      setModalOpen(false);
+      setPanelOpen(false);
+      notify.success(editing ? 'Vəzifə yeniləndi.' : 'Yeni vəzifə yaradıldı.');
       load();
     } catch (err) {
       setError(err.response?.data?.message ?? 'Xəta baş verdi.');
     }
   };
 
-  const onDelete = async (p) => {
-    if (!confirm(`"${p.title}" vəzifəsini silmək istədiyinizə əminsiniz?`)) return;
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteLoading(true);
     try {
-      await api.delete(`/positions/${p.id}`);
+      await api.delete(`/positions/${deleting.id}`);
+      notify.success('Vəzifə silindi.');
+      setDeleting(null);
       load();
     } catch (err) {
-      alert(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+      notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Vəzifələr</h2>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
-        >
-          + Yeni vəzifə
-        </button>
-      </div>
+      <PageHeader
+        title="Vəzifələr"
+        description="Şöbələr üzrə vəzifə adları və işçi bölgüsü"
+        actions={<Button onClick={openCreate}>+ Yeni vəzifə</Button>}
+      />
 
-      <div className="bg-white rounded-2xl shadow overflow-hidden">
+      <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-slate-50/80 text-slate-500">
             <tr>
-              <th className="text-left px-6 py-3 font-semibold">Vəzifə</th>
-              <th className="text-left px-6 py-3 font-semibold">Şöbə</th>
-              <th className="text-left px-6 py-3 font-semibold">İşçi sayı</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Vəzifə</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Şöbə</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">İşçi sayı</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {positions.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50">
-                <td className="px-6 py-3 font-medium text-slate-800">{p.title}</td>
-                <td className="px-6 py-3 text-slate-500">{p.departmentName}</td>
-                <td className="px-6 py-3">{p.employeeCount}</td>
-                <td className="px-6 py-3 text-right space-x-2 whitespace-nowrap">
-                  <button onClick={() => openEdit(p)} className="text-blue-600 hover:underline">
-                    Redaktə
-                  </button>
-                  <button onClick={() => onDelete(p)} className="text-red-600 hover:underline">
-                    Sil
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {positions.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
-                  Hələ vəzifə yoxdur.
-                </td>
-              </tr>
+            {loading ? (
+              <SkeletonRows rows={5} cols={4} />
+            ) : (
+              positions.map((p) => (
+                <tr key={p.id} className="transition-colors hover:bg-indigo-50/40">
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 text-base">
+                        💼
+                      </span>
+                      <span className="font-medium text-slate-800">{p.title}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-500">{p.departmentName}</td>
+                  <td className="px-6 py-3.5">
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 tabular-nums">
+                      {p.employeeCount} nəfər
+                    </span>
+                  </td>
+                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                    <span className="inline-flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>
+                        Redaktə
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setDeleting(p)}
+                      >
+                        Sil
+                      </Button>
+                    </span>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
+        {!loading && positions.length === 0 && (
+          <EmptyState
+            icon="💼"
+            title="Hələ vəzifə yoxdur"
+            description="İlk vəzifəni yaradaraq işçiləri təyin etməyə başlayın."
+            action={<Button onClick={openCreate}>+ Yeni vəzifə</Button>}
+          />
+        )}
       </div>
 
-      <Modal
-        open={modalOpen}
+      <SlideOver
+        open={panelOpen}
         title={editing ? 'Vəzifəni redaktə et' : 'Yeni vəzifə'}
-        onClose={() => setModalOpen(false)}
+        subtitle={editing ? editing.title : 'Yeni vəzifə məlumatları'}
+        onClose={() => setPanelOpen(false)}
       >
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-sm">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Vəzifə adı *</label>
-            <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
-              {...register('title', { required: true })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Şöbə *</label>
-            <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
-              {...register('departmentId', { required: true })}
-            >
-              <option value="">Seçin...</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Təsvir</label>
-            <textarea
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
-              {...register('description')}
-            />
-          </div>
-          <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2">
+          <Input label="Vəzifə adı" required {...register('title', { required: true })} />
+          <Select label="Şöbə" required {...register('departmentId', { required: true })}>
+            <option value="">Seçin...</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </Select>
+          <Textarea label="Təsvir" placeholder="Vəzifənin öhdəlikləri..." {...register('description')} />
+          <Button type="submit" className="w-full" loading={formState.isSubmitting}>
             Yadda saxla
-          </button>
+          </Button>
         </form>
-      </Modal>
+      </SlideOver>
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Vəzifəni sil"
+        message={deleting ? `"${deleting.title}" vəzifəsini silmək istədiyinizə əminsiniz?` : ''}
+        confirmText="Sil"
+        loading={deleteLoading}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

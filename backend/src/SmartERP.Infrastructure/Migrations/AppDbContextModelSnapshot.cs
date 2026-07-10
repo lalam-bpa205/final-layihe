@@ -22,6 +22,47 @@ namespace SmartERP.Infrastructure.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("SmartERP.Domain.Entities.Audit.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Changes")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("EntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
             modelBuilder.Entity("SmartERP.Domain.Entities.Auth.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -249,6 +290,52 @@ namespace SmartERP.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("UserRoles", (string)null);
+                });
+
+            modelBuilder.Entity("SmartERP.Domain.Entities.Chat.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("ReceiverUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiverUserId", "IsRead");
+
+                    b.HasIndex("SenderUserId", "ReceiverUserId", "Id");
+
+                    b.ToTable("ChatMessages", (string)null);
                 });
 
             modelBuilder.Entity("SmartERP.Domain.Entities.Finance.Budget", b =>
@@ -650,6 +737,10 @@ namespace SmartERP.Infrastructure.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
                     b.Property<DateOnly?>("BirthDate")
                         .HasColumnType("date");
 
@@ -664,6 +755,10 @@ namespace SmartERP.Infrastructure.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("EmergencyContact")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
@@ -683,6 +778,10 @@ namespace SmartERP.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
@@ -693,6 +792,9 @@ namespace SmartERP.Infrastructure.Migrations
                     b.Property<decimal>("Salary")
                         .HasPrecision(12, 2)
                         .HasColumnType("decimal(12,2)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("longtext");
@@ -1751,6 +1853,25 @@ namespace SmartERP.Infrastructure.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SmartERP.Domain.Entities.Chat.ChatMessage", b =>
+                {
+                    b.HasOne("SmartERP.Domain.Entities.Auth.User", "ReceiverUser")
+                        .WithMany()
+                        .HasForeignKey("ReceiverUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SmartERP.Domain.Entities.Auth.User", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReceiverUser");
+
+                    b.Navigation("SenderUser");
                 });
 
             modelBuilder.Entity("SmartERP.Domain.Entities.Finance.Budget", b =>

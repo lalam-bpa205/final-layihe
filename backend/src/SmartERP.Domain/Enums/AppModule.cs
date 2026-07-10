@@ -12,5 +12,8 @@ public enum AppModule
     Finance = 4,
     Sales = 5,
     Reports = 6,
-    Ai = 7
+    Ai = 7,
+
+    /// <summary>İdarəetmə paneli — yalnız adminlər üçün.</summary>
+    Management = 8
 }

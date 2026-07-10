@@ -8,4 +8,7 @@ public interface ICurrentUserService
 {
     int? UserId { get; }
     string? UserName { get; }
+
+    /// <summary>SuperAdmin və ya Admin roludadır.</summary>
+    bool IsAdmin { get; }
 }
