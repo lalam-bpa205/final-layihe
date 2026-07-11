@@ -1,18 +1,36 @@
-import { notify } from '../../notify';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
-import Modal from '../../components/Modal';
+import { notify } from '../../notify';
+import {
+  PageHeader,
+  Button,
+  Input,
+  SlideOver,
+  EmptyState,
+  SkeletonRows,
+  ConfirmDialog,
+} from '../../components/ui';
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
-  const load = () => api.get('/warehouses').then(({ data }) => setWarehouses(data));
+  const load = () => {
+    setLoading(true);
+    api
+      .get('/warehouses')
+      .then(({ data }) => setWarehouses(data))
+      .catch(() => notify.error('Anbarlar yüklənə bilmədi.'))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -22,114 +40,134 @@ export default function WarehousesPage() {
     setEditing(null);
     reset({ name: '', location: '' });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const openEdit = (w) => {
     setEditing(w);
     reset({ name: w.name, location: w.location ?? '' });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const onSubmit = async (values) => {
     try {
       if (editing) await api.put(`/warehouses/${editing.id}`, values);
       else await api.post('/warehouses', values);
-      setModalOpen(false);
+      setPanelOpen(false);
+      notify.success(editing ? 'Anbar məlumatları yeniləndi.' : 'Yeni anbar əlavə olundu.');
       load();
     } catch (err) {
       setError(err.response?.data?.message ?? 'Xəta baş verdi.');
     }
   };
 
-  const onDelete = async (w) => {
-    if (!confirm(`"${w.name}" anbarını silmək istədiyinizə əminsiniz?`)) return;
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteLoading(true);
     try {
-      await api.delete(`/warehouses/${w.id}`);
+      await api.delete(`/warehouses/${deleting.id}`);
+      notify.success('Anbar silindi.');
+      setDeleting(null);
       load();
     } catch (err) {
       notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Anbarlar</h2>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
-        >
-          + Yeni anbar
-        </button>
-      </div>
+      <PageHeader
+        title="Anbarlar"
+        description="Stokun saxlanıldığı anbarlar və onların ünvanları"
+        actions={<Button onClick={openCreate}>+ Yeni anbar</Button>}
+      />
 
-      <div className="bg-white rounded-2xl shadow overflow-hidden">
+      <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-slate-50/80 text-slate-500">
             <tr>
-              <th className="text-left px-6 py-3 font-semibold">Ad</th>
-              <th className="text-left px-6 py-3 font-semibold">Ünvan</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Ad</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Ünvan</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {warehouses.map((w) => (
-              <tr key={w.id} className="hover:bg-slate-50">
-                <td className="px-6 py-3 font-medium text-slate-800">{w.name}</td>
-                <td className="px-6 py-3 text-slate-500">{w.location || '—'}</td>
-                <td className="px-6 py-3 text-right space-x-2 whitespace-nowrap">
-                  <button onClick={() => openEdit(w)} className="text-blue-600 hover:underline">
-                    Redaktə
-                  </button>
-                  <button onClick={() => onDelete(w)} className="text-red-600 hover:underline">
-                    Sil
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {warehouses.length === 0 && (
-              <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-slate-400">
-                  Hələ anbar yoxdur.
-                </td>
-              </tr>
+            {loading ? (
+              <SkeletonRows rows={4} cols={3} />
+            ) : (
+              warehouses.map((w) => (
+                <tr key={w.id} className="transition-colors hover:bg-indigo-50/40">
+                  <td className="px-6 py-3.5 font-medium text-slate-800">
+                    <span className="mr-2" aria-hidden="true">🏭</span>
+                    {w.name}
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-500">{w.location || '—'}</td>
+                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                    <span className="inline-flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
+                        Redaktə
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setDeleting(w)}
+                      >
+                        Sil
+                      </Button>
+                    </span>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
+        {!loading && warehouses.length === 0 && (
+          <EmptyState
+            icon="🏭"
+            title="Hələ anbar yoxdur"
+            description="İlk anbarı əlavə edərək stok idarəetməsinə başlayın."
+            action={<Button onClick={openCreate}>+ Yeni anbar</Button>}
+          />
+        )}
       </div>
 
-      <Modal
-        open={modalOpen}
+      <SlideOver
+        open={panelOpen}
         title={editing ? 'Anbarı redaktə et' : 'Yeni anbar'}
-        onClose={() => setModalOpen(false)}
+        subtitle={editing ? editing.name : 'Yeni anbarın məlumatları'}
+        onClose={() => setPanelOpen(false)}
       >
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-sm">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Ad *</label>
-            <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
-              {...register('name', { required: true })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Ünvan</label>
-            <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
-              {...register('location')}
-            />
-          </div>
-          <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2">
+          <Input label="Ad" required {...register('name', { required: true })} />
+          <Input label="Ünvan" placeholder="Anbarın yerləşdiyi ünvan" {...register('location')} />
+          <Button type="submit" className="w-full" loading={formState.isSubmitting}>
             Yadda saxla
-          </button>
+          </Button>
         </form>
-      </Modal>
+      </SlideOver>
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Anbarı sil"
+        message={
+          deleting
+            ? `"${deleting.name}" anbarını silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla bilməz.`
+            : ''
+        }
+        confirmText="Sil"
+        loading={deleteLoading}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

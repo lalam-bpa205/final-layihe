@@ -1,34 +1,55 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
-import Modal from '../../components/Modal';
+import { notify } from '../../notify';
+import {
+  PageHeader,
+  Button,
+  Input,
+  Select,
+  SlideOver,
+  EmptyState,
+  SkeletonRows,
+  Tabs,
+} from '../../components/ui';
+import { MovementTypeBadge, SignedQty, fmtDateTime } from './inventoryShared';
 
-const TYPE_LABELS = {
-  1: { text: 'Giriş', cls: 'bg-green-100 text-green-700' },
-  2: { text: 'Çıxış', cls: 'bg-red-100 text-red-700' },
-  3: { text: 'Transfer (qəbul)', cls: 'bg-blue-100 text-blue-700' },
-  4: { text: 'Transfer (göndərmə)', cls: 'bg-orange-100 text-orange-700' },
+const PANEL_TITLES = {
+  in: 'Stok girişi',
+  out: 'Stok çıxışı',
+  transfer: 'Anbarlar arası transfer',
 };
 
 export default function StockPage() {
   const [tab, setTab] = useState('movements');
   const [movements, setMovements] = useState({ items: [], totalCount: 0, totalPages: 0, page: 1 });
+  const [movementsLoading, setMovementsLoading] = useState(true);
   const [levels, setLevels] = useState([]);
+  const [levelsLoading, setLevelsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
-  const [modal, setModal] = useState(null); // 'in' | 'out' | 'transfer'
+  const [panel, setPanel] = useState(null); // 'in' | 'out' | 'transfer'
   const [error, setError] = useState(null);
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
   const loadMovements = useCallback(() => {
-    api.get('/stock/movements', { params: { page, pageSize: 10 } })
-      .then(({ data }) => setMovements(data));
+    setMovementsLoading(true);
+    api
+      .get('/stock/movements', { params: { page, pageSize: 10 } })
+      .then(({ data }) => setMovements(data))
+      .catch(() => notify.error('Stok hərəkətləri yüklənə bilmədi.'))
+      .finally(() => setMovementsLoading(false));
   }, [page]);
 
   const loadLevels = useCallback(() => {
-    api.get('/stock/levels').then(({ data }) => setLevels(data));
+    setLevelsLoading(true);
+    api
+      .get('/stock/levels')
+      .then(({ data }) => setLevels(data))
+      .catch(() => notify.error('Stok qalıqları yüklənə bilmədi.'))
+      .finally(() => setLevelsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -37,23 +58,22 @@ export default function StockPage() {
   }, [loadMovements, loadLevels]);
 
   useEffect(() => {
-    api.get('/products', { params: { pageSize: 100 } })
-      .then(({ data }) => setProducts(data.items));
+    api.get('/products', { params: { pageSize: 100 } }).then(({ data }) => setProducts(data.items));
     api.get('/warehouses').then(({ data }) => setWarehouses(data));
   }, []);
 
-  const openModal = (type) => {
+  const openPanel = (type) => {
     reset({
       productId: '', warehouseId: '', fromWarehouseId: '', toWarehouseId: '',
       quantity: '', unitPrice: '', note: '',
     });
     setError(null);
-    setModal(type);
+    setPanel(type);
   };
 
   const onSubmit = async (values) => {
     try {
-      if (modal === 'in') {
+      if (panel === 'in') {
         await api.post('/stock/in', {
           productId: Number(values.productId),
           warehouseId: Number(values.warehouseId),
@@ -61,13 +81,15 @@ export default function StockPage() {
           unitPrice: values.unitPrice ? Number(values.unitPrice) : null,
           note: values.note || null,
         });
-      } else if (modal === 'out') {
+        notify.success('Stok girişi qeydə alındı.');
+      } else if (panel === 'out') {
         await api.post('/stock/out', {
           productId: Number(values.productId),
           warehouseId: Number(values.warehouseId),
           quantity: Number(values.quantity),
           note: values.note || null,
         });
+        notify.success('Stok çıxışı qeydə alındı.');
       } else {
         await api.post('/stock/transfer', {
           productId: Number(values.productId),
@@ -76,8 +98,9 @@ export default function StockPage() {
           quantity: Number(values.quantity),
           note: values.note || null,
         });
+        notify.success('Transfer tamamlandı.');
       }
-      setModal(null);
+      setPanel(null);
       loadMovements();
       loadLevels();
     } catch (err) {
@@ -90,212 +113,222 @@ export default function StockPage() {
     }
   };
 
-  const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2';
-  const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
-  const tabCls = (t) =>
-    `px-4 py-2 rounded-lg text-sm font-medium ${
-      tab === t ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-300'
-    }`;
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Stok idarəetməsi</h2>
-        <div className="space-x-2">
-          <button onClick={() => openModal('in')} className="rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2">
-            + Giriş
-          </button>
-          <button onClick={() => openModal('out')} className="rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2">
-            − Çıxış
-          </button>
-          <button onClick={() => openModal('transfer')} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2">
-            ⇄ Transfer
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Stok idarəetməsi"
+        description="Giriş, çıxış və transferlər — bütün stok hərəkətlərinin qeydiyyatı"
+        actions={
+          <>
+            <Button onClick={() => openPanel('in')}>+ Giriş</Button>
+            <Button
+              variant="secondary"
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+              onClick={() => openPanel('out')}
+            >
+              − Çıxış
+            </Button>
+            <Button variant="secondary" onClick={() => openPanel('transfer')}>
+              ⇄ Transfer
+            </Button>
+          </>
+        }
+      />
 
-      <div className="flex gap-2 mb-4">
-        <button className={tabCls('movements')} onClick={() => setTab('movements')}>Hərəkətlər</button>
-        <button className={tabCls('levels')} onClick={() => setTab('levels')}>Qalıqlar</button>
-      </div>
+      <Tabs
+        className="mb-4"
+        tabs={[
+          { key: 'movements', label: 'Hərəkətlər', icon: '🕘', count: movements.totalCount },
+          { key: 'levels', label: 'Qalıqlar', icon: '📊', count: levels.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
       {tab === 'movements' ? (
         <>
-          <div className="bg-white rounded-2xl shadow overflow-x-auto">
+          <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600">
+              <thead className="bg-slate-50/80 text-slate-500">
                 <tr>
-                  <th className="text-left px-6 py-3 font-semibold">Tarix</th>
-                  <th className="text-left px-6 py-3 font-semibold">Məhsul</th>
-                  <th className="text-left px-6 py-3 font-semibold">Anbar</th>
-                  <th className="text-left px-6 py-3 font-semibold">Növ</th>
-                  <th className="text-right px-6 py-3 font-semibold">Miqdar</th>
-                  <th className="text-left px-6 py-3 font-semibold">Qeyd</th>
-                  <th className="text-left px-6 py-3 font-semibold">Kim</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Tarix</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Məhsul</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Anbar</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Növ</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider">Miqdar</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Qeyd</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Kim</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {movements.items.map((m) => {
-                  const t = TYPE_LABELS[m.type] ?? { text: m.type, cls: 'bg-slate-100' };
-                  return (
-                    <tr key={m.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-3 text-slate-500 whitespace-nowrap">
-                        {new Date(m.createdDate).toLocaleString('az')}
+                {movementsLoading ? (
+                  <SkeletonRows rows={6} cols={7} />
+                ) : (
+                  movements.items.map((m) => (
+                    <tr key={m.id} className="transition-colors hover:bg-indigo-50/40">
+                      <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap tabular-nums">
+                        {fmtDateTime(m.createdDate)}
                       </td>
-                      <td className="px-6 py-3 font-medium text-slate-800">{m.productName}</td>
-                      <td className="px-6 py-3">{m.warehouseName}</td>
-                      <td className="px-6 py-3">
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${t.cls}`}>
-                          {t.text}
-                        </span>
+                      <td className="px-6 py-3.5 font-medium text-slate-800">{m.productName}</td>
+                      <td className="px-6 py-3.5 text-slate-600">{m.warehouseName}</td>
+                      <td className="px-6 py-3.5">
+                        <MovementTypeBadge type={m.type} />
                       </td>
-                      <td className="px-6 py-3 text-right">{m.quantity}</td>
-                      <td className="px-6 py-3 text-slate-500 max-w-40 truncate">{m.note || '—'}</td>
-                      <td className="px-6 py-3 text-slate-500">{m.createdBy}</td>
+                      <td className="px-6 py-3.5 text-right">
+                        <SignedQty type={m.type} quantity={m.quantity} />
+                      </td>
+                      <td className="px-6 py-3.5 text-slate-500 max-w-40 truncate">
+                        {m.note || '—'}
+                      </td>
+                      <td className="px-6 py-3.5 text-slate-500">{m.createdBy}</td>
                     </tr>
-                  );
-                })}
-                {movements.items.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
-                      Hələ stok hərəkəti yoxdur.
-                    </td>
-                  </tr>
+                  ))
                 )}
               </tbody>
             </table>
+            {!movementsLoading && movements.items.length === 0 && (
+              <EmptyState
+                icon="🕘"
+                title="Hələ stok hərəkəti yoxdur"
+                description="Giriş, çıxış və ya transfer edərək stok hərəkətlərini qeydə alın."
+                action={<Button onClick={() => openPanel('in')}>+ İlk girişi et</Button>}
+              />
+            )}
           </div>
 
+          {/* Pagination */}
           <div className="flex items-center justify-between mt-4 text-sm text-slate-600">
             <span>Cəmi: {movements.totalCount} hərəkət</span>
-            <div className="space-x-2">
-              <button
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40 bg-white"
               >
                 ← Əvvəlki
-              </button>
-              <span>Səhifə {movements.page} / {Math.max(movements.totalPages, 1)}</span>
-              <button
+              </Button>
+              <span className="px-1 tabular-nums">
+                Səhifə {movements.page} / {Math.max(movements.totalPages, 1)}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
                 disabled={page >= movements.totalPages}
                 onClick={() => setPage(page + 1)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40 bg-white"
               >
                 Növbəti →
-              </button>
+              </Button>
             </div>
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-2xl shadow overflow-hidden">
+        <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
+            <thead className="bg-slate-50/80 text-slate-500">
               <tr>
-                <th className="text-left px-6 py-3 font-semibold">Məhsul</th>
-                <th className="text-left px-6 py-3 font-semibold">Anbar</th>
-                <th className="text-right px-6 py-3 font-semibold">Qalıq</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Məhsul</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Anbar</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider">Qalıq</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {levels.map((l, i) => (
-                <tr key={i} className="hover:bg-slate-50">
-                  <td className="px-6 py-3 font-medium text-slate-800">{l.productName}</td>
-                  <td className="px-6 py-3">{l.warehouseName}</td>
-                  <td className="px-6 py-3 text-right font-semibold">
-                    {l.quantity} {l.unit}
-                  </td>
-                </tr>
-              ))}
-              {levels.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-slate-400">
-                    Anbarlarda qalıq yoxdur.
-                  </td>
-                </tr>
+              {levelsLoading ? (
+                <SkeletonRows rows={6} cols={3} />
+              ) : (
+                levels.map((l, i) => (
+                  <tr key={i} className="transition-colors hover:bg-indigo-50/40">
+                    <td className="px-6 py-3.5 font-medium text-slate-800">{l.productName}</td>
+                    <td className="px-6 py-3.5 text-slate-600">{l.warehouseName}</td>
+                    <td className="px-6 py-3.5 text-right font-semibold text-slate-800 tabular-nums">
+                      {l.quantity} {l.unit}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
+          {!levelsLoading && levels.length === 0 && (
+            <EmptyState
+              icon="📊"
+              title="Anbarlarda qalıq yoxdur"
+              description="Stok girişi etdikdən sonra qalıqlar burada görünəcək."
+              action={<Button onClick={() => openPanel('in')}>+ İlk girişi et</Button>}
+            />
+          )}
         </div>
       )}
 
-      <Modal
-        open={!!modal}
-        title={modal === 'in' ? 'Stok girişi' : modal === 'out' ? 'Stok çıxışı' : 'Anbarlar arası transfer'}
-        onClose={() => setModal(null)}
+      <SlideOver
+        open={Boolean(panel)}
+        title={PANEL_TITLES[panel] ?? ''}
+        subtitle="Əməliyyat təsdiqləndikdən sonra qalıqlar avtomatik yenilənəcək"
+        onClose={() => setPanel(null)}
       >
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-sm">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className={labelCls}>Məhsul *</label>
-            <select className={inputCls} {...register('productId', { required: true })}>
-              <option value="">Seçin...</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.barcode})
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select label="Məhsul" required {...register('productId', { required: true })}>
+            <option value="">Seçin...</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.barcode})
+              </option>
+            ))}
+          </Select>
 
-          {modal === 'transfer' ? (
+          {panel === 'transfer' ? (
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Göndərən anbar *</label>
-                <select className={inputCls} {...register('fromWarehouseId', { required: true })}>
-                  <option value="">Seçin...</option>
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Qəbul edən anbar *</label>
-                <select className={inputCls} {...register('toWarehouseId', { required: true })}>
-                  <option value="">Seçin...</option>
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <label className={labelCls}>Anbar *</label>
-              <select className={inputCls} {...register('warehouseId', { required: true })}>
+              <Select label="Göndərən anbar" required {...register('fromWarehouseId', { required: true })}>
                 <option value="">Seçin...</option>
                 {warehouses.map((w) => (
                   <option key={w.id} value={w.id}>{w.name}</option>
                 ))}
-              </select>
+              </Select>
+              <Select label="Qəbul edən anbar" required {...register('toWarehouseId', { required: true })}>
+                <option value="">Seçin...</option>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </Select>
             </div>
+          ) : (
+            <Select label="Anbar" required {...register('warehouseId', { required: true })}>
+              <option value="">Seçin...</option>
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </Select>
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Miqdar *</label>
-              <input type="number" step="0.001" className={inputCls} {...register('quantity', { required: true })} />
-            </div>
-            {modal === 'in' && (
-              <div>
-                <label className={labelCls}>Vahid qiymət (₼)</label>
-                <input type="number" step="0.01" className={inputCls} {...register('unitPrice')} />
-              </div>
+            <Input
+              label="Miqdar"
+              required
+              type="number"
+              step="0.001"
+              min="0"
+              {...register('quantity', { required: true })}
+            />
+            {panel === 'in' && (
+              <Input
+                label="Vahid qiymət (₼)"
+                type="number"
+                step="0.01"
+                min="0"
+                {...register('unitPrice')}
+              />
             )}
           </div>
-          <div>
-            <label className={labelCls}>Qeyd</label>
-            <input className={inputCls} {...register('note')} />
-          </div>
-          <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2">
+          <Input label="Qeyd" placeholder="Əməliyyat barədə qeyd..." {...register('note')} />
+          <Button type="submit" className="w-full" loading={formState.isSubmitting}>
             Təsdiqlə
-          </button>
+          </Button>
         </form>
-      </Modal>
+      </SlideOver>
     </div>
   );
 }

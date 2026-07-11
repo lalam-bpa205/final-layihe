@@ -8,12 +8,17 @@ import DepartmentsPage from './pages/hr/DepartmentsPage';
 import PositionsPage from './pages/hr/PositionsPage';
 import AttendancePage from './pages/hr/AttendancePage';
 import LeaveRequestsPage from './pages/hr/LeaveRequestsPage';
+import InventoryDashboardPage from './pages/inventory/InventoryDashboardPage';
 import ProductsPage from './pages/inventory/ProductsPage';
+import ProductDetailPage from './pages/inventory/ProductDetailPage';
 import CategoriesPage from './pages/inventory/CategoriesPage';
 import WarehousesPage from './pages/inventory/WarehousesPage';
 import StockPage from './pages/inventory/StockPage';
+import TransportDashboardPage from './pages/transport/TransportDashboardPage';
 import DeliveriesPage from './pages/transport/DeliveriesPage';
+import DeliveryDetailPage from './pages/transport/DeliveryDetailPage';
 import VehiclesPage from './pages/transport/VehiclesPage';
+import VehicleDetailPage from './pages/transport/VehicleDetailPage';
 import DriversPage from './pages/transport/DriversPage';
 import VehicleLogsPage from './pages/transport/VehicleLogsPage';
 import TransactionsPage from './pages/finance/TransactionsPage';
@@ -48,12 +53,17 @@ export default function App() {
           <Route path="/hr/positions" element={<PositionsPage />} />
           <Route path="/hr/attendance" element={<AttendancePage />} />
           <Route path="/hr/leave-requests" element={<LeaveRequestsPage />} />
+          <Route path="/inventory" element={<InventoryDashboardPage />} />
           <Route path="/inventory/products" element={<ProductsPage />} />
+          <Route path="/inventory/products/:id" element={<ProductDetailPage />} />
           <Route path="/inventory/categories" element={<CategoriesPage />} />
           <Route path="/inventory/warehouses" element={<WarehousesPage />} />
           <Route path="/inventory/stock" element={<StockPage />} />
+          <Route path="/transport" element={<TransportDashboardPage />} />
           <Route path="/transport/deliveries" element={<DeliveriesPage />} />
+          <Route path="/transport/deliveries/:id" element={<DeliveryDetailPage />} />
           <Route path="/transport/vehicles" element={<VehiclesPage />} />
+          <Route path="/transport/vehicles/:id" element={<VehicleDetailPage />} />
           <Route path="/transport/drivers" element={<DriversPage />} />
           <Route path="/transport/logs" element={<VehicleLogsPage />} />
           <Route path="/finance/transactions" element={<TransactionsPage />} />

@@ -61,6 +61,7 @@ public class DeliveryDto
     public DateTime? StartedAtUtc { get; set; }
     public DateTime? DeliveredAtUtc { get; set; }
     public string? Note { get; set; }
+    public DateTime CreatedDate { get; set; }
 }
 
 public record SaveDeliveryRequest(
@@ -123,3 +124,75 @@ public record SaveMaintenanceRecordRequest(
     string Description,
     decimal Cost,
     DateOnly? NextDueDate);
+
+// ---------- Analitika: modul icmalı ----------
+public class TransportSummaryDto
+{
+    public VehicleCountsDto Vehicles { get; set; } = null!;
+    public DriverCountsDto Drivers { get; set; } = null!;
+    public int ActiveDeliveryCount { get; set; }
+    public MonthDeliveryStatsDto DeliveriesThisMonth { get; set; } = null!;
+    public decimal MonthFuelCost { get; set; }
+    public decimal MonthMaintenanceCost { get; set; }
+    public List<DriverDto> ExpiringLicenses { get; set; } = [];
+    public List<TopDriverDto> TopDrivers { get; set; } = [];
+    public List<DeliveryDto> RecentDeliveries { get; set; } = [];
+}
+
+public class VehicleCountsDto
+{
+    public int Total { get; set; }
+    public int Active { get; set; }
+    public int OnTrip { get; set; }
+    public int InMaintenance { get; set; }
+    public int Inactive { get; set; }
+}
+
+public class DriverCountsDto
+{
+    public int Total { get; set; }
+    public int Available { get; set; }
+    public int OnTrip { get; set; }
+}
+
+public class MonthDeliveryStatsDto
+{
+    public int Total { get; set; }
+    public int Delivered { get; set; }
+    public int Cancelled { get; set; }
+}
+
+public class TopDriverDto
+{
+    public int DriverId { get; set; }
+    public string FullName { get; set; } = null!;
+    public int DeliveredCount { get; set; }
+}
+
+// ---------- Analitika: avtomobil detalları ----------
+public class VehicleDetailsDto
+{
+    public VehicleDto Vehicle { get; set; } = null!;
+    public VehicleTotalsDto Totals { get; set; } = null!;
+    public List<MonthlyCostDto> MonthlyCosts { get; set; } = [];
+    public List<FuelRecordDto> RecentFuelRecords { get; set; } = [];
+    public List<MaintenanceRecordDto> RecentMaintenance { get; set; } = [];
+    public List<DeliveryDto> RecentDeliveries { get; set; } = [];
+}
+
+public class VehicleTotalsDto
+{
+    public decimal FuelCost { get; set; }
+    public decimal FuelLiters { get; set; }
+    public decimal MaintenanceCost { get; set; }
+    public int DeliveryCount { get; set; }
+    public int DeliveredCount { get; set; }
+}
+
+public class MonthlyCostDto
+{
+    /// <summary>Ay: "yyyy-MM" formatında.</summary>
+    public string Month { get; set; } = null!;
+    public decimal FuelCost { get; set; }
+    public decimal MaintenanceCost { get; set; }
+}

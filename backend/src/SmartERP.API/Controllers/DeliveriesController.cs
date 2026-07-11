@@ -15,6 +15,10 @@ public class DeliveriesController(IDeliveryService deliveryService) : Controller
     public async Task<ActionResult<PagedResult<DeliveryDto>>> GetPaged([FromQuery] DeliveryFilter filter, CancellationToken ct) =>
         Ok(await deliveryService.GetPagedAsync(filter, ct));
 
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<DeliveryDto>> GetById(int id, CancellationToken ct) =>
+        Ok(await deliveryService.GetByIdAsync(id, ct));
+
     [HttpPost]
     public async Task<ActionResult<DeliveryDto>> Create(SaveDeliveryRequest request, CancellationToken ct) =>
         Ok(await deliveryService.CreateAsync(request, ct));

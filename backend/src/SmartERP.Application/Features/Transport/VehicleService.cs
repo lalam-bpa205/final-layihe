@@ -13,6 +13,7 @@ namespace SmartERP.Application.Features.Transport;
 public interface IVehicleService
 {
     Task<List<VehicleDto>> GetAllAsync(VehicleStatus? status = null, CancellationToken ct = default);
+    Task<VehicleDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default);
     Task<VehicleDto> CreateAsync(SaveVehicleRequest request, CancellationToken ct = default);
     Task<VehicleDto> UpdateAsync(int id, SaveVehicleRequest request, CancellationToken ct = default);
     Task<VehicleDto> SetStatusAsync(int id, VehicleStatus status, CancellationToken ct = default);
@@ -34,6 +35,90 @@ public class VehicleService(
             .OrderBy(v => v.PlateNumber)
             .ProjectTo<VehicleDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
+    }
+
+    /// <summary>Avtomobilin analitik detalları: xərclər, aylıq trend və son qeydlər.</summary>
+    public async Task<VehicleDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default)
+    {
+        var vehicle = await unitOfWork.Repository<Vehicle>().Query()
+            .Where(v => v.Id == id)
+            .ProjectTo<VehicleDto>(mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Avtomobil", id);
+
+        var fuelQuery = unitOfWork.Repository<FuelRecord>().Query().Where(f => f.VehicleId == id);
+        var maintenanceQuery = unitOfWork.Repository<MaintenanceRecord>().Query().Where(m => m.VehicleId == id);
+        var deliveryRepo = unitOfWork.Repository<Delivery>();
+
+        var totals = new VehicleTotalsDto
+        {
+            FuelCost = await fuelQuery.SumAsync(f => f.Cost, ct),
+            FuelLiters = await fuelQuery.SumAsync(f => f.Liters, ct),
+            MaintenanceCost = await maintenanceQuery.SumAsync(m => m.Cost, ct),
+            DeliveryCount = await deliveryRepo.CountAsync(d => d.VehicleId == id, ct),
+            DeliveredCount = await deliveryRepo.CountAsync(
+                d => d.VehicleId == id && d.Status == DeliveryStatus.Delivered, ct)
+        };
+
+        // Son 6 ay (cari daxil) — hər ay üçün nöqtə, məlumat olmasa 0
+        var today = DateTime.Today;
+        var firstMonth = new DateOnly(today.Year, today.Month, 1).AddMonths(-5);
+
+        var fuelMonthly = await fuelQuery
+            .Where(f => f.Date >= firstMonth)
+            .GroupBy(f => new { f.Date.Year, f.Date.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Cost = g.Sum(x => x.Cost) })
+            .ToListAsync(ct);
+
+        var maintenanceMonthly = await maintenanceQuery
+            .Where(m => m.Date >= firstMonth)
+            .GroupBy(m => new { m.Date.Year, m.Date.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Cost = g.Sum(x => x.Cost) })
+            .ToListAsync(ct);
+
+        var monthlyCosts = Enumerable.Range(0, 6)
+            .Select(i =>
+            {
+                var month = firstMonth.AddMonths(i);
+                return new MonthlyCostDto
+                {
+                    Month = $"{month.Year:D4}-{month.Month:D2}",
+                    FuelCost = fuelMonthly
+                        .FirstOrDefault(x => x.Year == month.Year && x.Month == month.Month)?.Cost ?? 0m,
+                    MaintenanceCost = maintenanceMonthly
+                        .FirstOrDefault(x => x.Year == month.Year && x.Month == month.Month)?.Cost ?? 0m
+                };
+            })
+            .ToList();
+
+        var recentFuelRecords = await fuelQuery
+            .OrderByDescending(f => f.Date).ThenByDescending(f => f.Id)
+            .Take(8)
+            .ProjectTo<FuelRecordDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        var recentMaintenance = await maintenanceQuery
+            .OrderByDescending(m => m.Date).ThenByDescending(m => m.Id)
+            .Take(8)
+            .ProjectTo<MaintenanceRecordDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        var recentDeliveries = await deliveryRepo.Query()
+            .Where(d => d.VehicleId == id)
+            .OrderByDescending(d => d.Id)
+            .Take(5)
+            .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        return new VehicleDetailsDto
+        {
+            Vehicle = vehicle,
+            Totals = totals,
+            MonthlyCosts = monthlyCosts,
+            RecentFuelRecords = recentFuelRecords,
+            RecentMaintenance = recentMaintenance,
+            RecentDeliveries = recentDeliveries
+        };
     }
 
     public async Task<VehicleDto> CreateAsync(SaveVehicleRequest request, CancellationToken ct = default)

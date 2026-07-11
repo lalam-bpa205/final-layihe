@@ -15,6 +15,11 @@ public class VehiclesController(IVehicleService vehicleService) : ControllerBase
     public async Task<ActionResult<List<VehicleDto>>> GetAll([FromQuery] VehicleStatus? status, CancellationToken ct) =>
         Ok(await vehicleService.GetAllAsync(status, ct));
 
+    // Avtomobilin analitik detalları (xərclər, aylıq trend, son qeydlər)
+    [HttpGet("{id:int}/details")]
+    public async Task<ActionResult<VehicleDetailsDto>> GetDetails(int id, CancellationToken ct) =>
+        Ok(await vehicleService.GetDetailsAsync(id, ct));
+
     [HttpPost]
     public async Task<ActionResult<VehicleDto>> Create(SaveVehicleRequest request, CancellationToken ct) =>
         Ok(await vehicleService.CreateAsync(request, ct));

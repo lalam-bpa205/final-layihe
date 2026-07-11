@@ -1,26 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../../api/axios';
-import Modal from '../../components/Modal';
-
-const STATUS = {
-  1: { text: 'Hazırdır', cls: 'bg-green-100 text-green-700' },
-  2: { text: 'Səfərdə', cls: 'bg-blue-100 text-blue-700' },
-  3: { text: 'Deaktiv', cls: 'bg-slate-100 text-slate-600' },
-};
+import { notify } from '../../notify';
+import {
+  PageHeader,
+  Avatar,
+  Button,
+  Input,
+  Select,
+  SlideOver,
+  EmptyState,
+  SkeletonRows,
+} from '../../components/ui';
+import { DriverStatusBadge, fmtDate } from './transportShared';
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
   const [expiring, setExpiring] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
   const load = () => {
-    api.get('/drivers').then(({ data }) => setDrivers(data));
+    setLoading(true);
+    api
+      .get('/drivers')
+      .then(({ data }) => setDrivers(data))
+      .catch(() => notify.error('Sürücülər yüklənə bilmədi.'))
+      .finally(() => setLoading(false));
     api.get('/drivers/expiring-licenses').then(({ data }) => setExpiring(data));
   };
 
@@ -34,7 +45,7 @@ export default function DriversPage() {
     setEditing(null);
     reset({ employeeId: '', licenseNumber: '', licenseCategories: '', licenseExpiryDate: '' });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const openEdit = (d) => {
@@ -46,7 +57,7 @@ export default function DriversPage() {
       licenseExpiryDate: d.licenseExpiryDate,
     });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const onSubmit = async (values) => {
@@ -54,7 +65,8 @@ export default function DriversPage() {
     try {
       if (editing) await api.put(`/drivers/${editing.id}`, payload);
       else await api.post('/drivers', payload);
-      setModalOpen(false);
+      setPanelOpen(false);
+      notify.success(editing ? 'Sürücü məlumatları yeniləndi.' : 'Yeni sürücü əlavə olundu.');
       load();
     } catch (err) {
       const data = err.response?.data;
@@ -68,94 +80,98 @@ export default function DriversPage() {
 
   const expiringIds = new Set(expiring.map((d) => d.id));
 
-  const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2';
-  const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Sürücülər</h2>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
-        >
-          + Yeni sürücü
-        </button>
-      </div>
+      <PageHeader
+        title="Sürücülər"
+        description="Sürücü heyəti, vəsiqələr və statuslar"
+        actions={<Button onClick={openCreate}>+ Yeni sürücü</Button>}
+      />
 
+      {/* Vəsiqə xəbərdarlığı */}
       {expiring.length > 0 && (
-        <div className="mb-4 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 text-sm">
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3.5 text-sm text-amber-800">
           ⚠️ <b>{expiring.length}</b> sürücünün vəsiqəsinin müddəti 30 gün ərzində bitir:{' '}
-          {expiring.map((d) => `${d.fullName} (${d.licenseExpiryDate})`).join(', ')}
+          {expiring.map((d) => `${d.fullName} (${fmtDate(d.licenseExpiryDate)})`).join(', ')}
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow overflow-x-auto">
+      <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-slate-50/80 text-slate-500">
             <tr>
-              <th className="text-left px-6 py-3 font-semibold">Ad Soyad</th>
-              <th className="text-left px-6 py-3 font-semibold">Telefon</th>
-              <th className="text-left px-6 py-3 font-semibold">Vəsiqə №</th>
-              <th className="text-left px-6 py-3 font-semibold">Kateqoriyalar</th>
-              <th className="text-left px-6 py-3 font-semibold">Etibarlıdır</th>
-              <th className="text-left px-6 py-3 font-semibold">Status</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Sürücü</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Telefon</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Vəsiqə №</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Kateqoriyalar</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Etibarlıdır</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Status</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {drivers.map((d) => {
-              const st = STATUS[d.status] ?? { text: d.status, cls: 'bg-slate-100' };
-              return (
-                <tr key={d.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-3 font-medium text-slate-800">{d.fullName}</td>
-                  <td className="px-6 py-3 text-slate-500">{d.phone || '—'}</td>
-                  <td className="px-6 py-3 font-mono">{d.licenseNumber}</td>
-                  <td className="px-6 py-3">{d.licenseCategories}</td>
-                  <td className="px-6 py-3">
-                    <span className={expiringIds.has(d.id) ? 'text-yellow-700 font-semibold' : ''}>
-                      {d.licenseExpiryDate} {expiringIds.has(d.id) && '⚠️'}
+            {loading ? (
+              <SkeletonRows rows={5} cols={7} withAvatar />
+            ) : (
+              drivers.map((d) => (
+                <tr key={d.id} className="transition-colors hover:bg-indigo-50/40">
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={d.fullName} />
+                      <p className="font-medium text-slate-800">{d.fullName}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-500 tabular-nums">{d.phone || '—'}</td>
+                  <td className="px-6 py-3.5 font-mono text-xs text-slate-600">{d.licenseNumber}</td>
+                  <td className="px-6 py-3.5 text-slate-600">{d.licenseCategories}</td>
+                  <td className="px-6 py-3.5 whitespace-nowrap tabular-nums">
+                    <span
+                      className={
+                        expiringIds.has(d.id) ? 'text-amber-700 font-semibold' : 'text-slate-500'
+                      }
+                    >
+                      {fmtDate(d.licenseExpiryDate)} {expiringIds.has(d.id) && '⚠️'}
                     </span>
                   </td>
-                  <td className="px-6 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${st.cls}`}>
-                      {st.text}
-                    </span>
+                  <td className="px-6 py-3.5">
+                    <DriverStatusBadge status={d.status} />
                   </td>
-                  <td className="px-6 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => openEdit(d)} className="text-blue-600 hover:underline">
+                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(d)}>
                       Redaktə
-                    </button>
+                    </Button>
                   </td>
                 </tr>
-              );
-            })}
-            {drivers.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
-                  Hələ sürücü yoxdur. Sürücü əlavə etmək üçün əvvəlcə HR modulunda işçi yaradın.
-                </td>
-              </tr>
+              ))
             )}
           </tbody>
         </table>
+        {!loading && drivers.length === 0 && (
+          <EmptyState
+            icon="🧑‍✈️"
+            title="Hələ sürücü yoxdur"
+            description="Sürücü əlavə etmək üçün əvvəlcə HR modulunda işçi yaradın, sonra onu sürücü kimi qeydiyyata alın."
+            action={<Button onClick={openCreate}>+ Yeni sürücü</Button>}
+          />
+        )}
       </div>
 
-      <Modal
-        open={modalOpen}
+      <SlideOver
+        open={panelOpen}
         title={editing ? 'Sürücünü redaktə et' : 'Yeni sürücü'}
-        onClose={() => setModalOpen(false)}
+        subtitle={editing ? editing.fullName : 'Yeni sürücünün məlumatları'}
+        onClose={() => setPanelOpen(false)}
       >
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-sm">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className={labelCls}>İşçi *</label>
-            <select
-              className={inputCls}
+            <Select
+              label="İşçi"
+              required
               disabled={!!editing}
               {...register('employeeId', { required: true })}
             >
@@ -165,30 +181,36 @@ export default function DriversPage() {
                   {e.firstName} {e.lastName} — {e.positionTitle}
                 </option>
               ))}
-            </select>
+            </Select>
             {editing && (
               <p className="mt-1 text-xs text-slate-400">İşçi bağlantısı dəyişdirilə bilməz.</p>
             )}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Vəsiqə nömrəsi *</label>
-              <input className={inputCls} placeholder="AB1234567" {...register('licenseNumber', { required: true })} />
-            </div>
-            <div>
-              <label className={labelCls}>Kateqoriyalar *</label>
-              <input className={inputCls} placeholder="B, C, CE" {...register('licenseCategories', { required: true })} />
-            </div>
+            <Input
+              label="Vəsiqə nömrəsi"
+              required
+              placeholder="AB1234567"
+              {...register('licenseNumber', { required: true })}
+            />
+            <Input
+              label="Kateqoriyalar"
+              required
+              placeholder="B, C, CE"
+              {...register('licenseCategories', { required: true })}
+            />
           </div>
-          <div>
-            <label className={labelCls}>Vəsiqənin bitmə tarixi *</label>
-            <input type="date" className={inputCls} {...register('licenseExpiryDate', { required: true })} />
-          </div>
-          <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2">
+          <Input
+            label="Vəsiqənin bitmə tarixi"
+            required
+            type="date"
+            {...register('licenseExpiryDate', { required: true })}
+          />
+          <Button type="submit" className="w-full" loading={formState.isSubmitting}>
             Yadda saxla
-          </button>
+          </Button>
         </form>
-      </Modal>
+      </SlideOver>
     </div>
   );
 }

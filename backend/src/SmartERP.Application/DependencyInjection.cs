@@ -33,11 +33,13 @@ public static class DependencyInjection
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IStockService, StockService>();
+        services.AddScoped<IInventorySummaryService, InventorySummaryService>();
 
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<IDriverService, DriverService>();
         services.AddScoped<IDeliveryService, DeliveryService>();
         services.AddScoped<IVehicleLogService, VehicleLogService>();
+        services.AddScoped<ITransportSummaryService, TransportSummaryService>();
 
         services.AddScoped<ITransactionCategoryService, TransactionCategoryService>();
         services.AddScoped<IFinanceTransactionService, FinanceTransactionService>();

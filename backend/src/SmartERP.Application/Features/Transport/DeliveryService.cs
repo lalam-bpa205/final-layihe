@@ -15,6 +15,7 @@ namespace SmartERP.Application.Features.Transport;
 public interface IDeliveryService
 {
     Task<PagedResult<DeliveryDto>> GetPagedAsync(DeliveryFilter filter, CancellationToken ct = default);
+    Task<DeliveryDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<DeliveryDto> CreateAsync(SaveDeliveryRequest request, CancellationToken ct = default);
     Task<DeliveryDto> StartAsync(int id, CancellationToken ct = default);
     Task<DeliveryDto> CompleteAsync(int id, CancellationToken ct = default);
@@ -49,6 +50,13 @@ public class DeliveryService(
             .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
+
+    public async Task<DeliveryDto> GetByIdAsync(int id, CancellationToken ct = default) =>
+        await unitOfWork.Repository<Delivery>().Query()
+            .Where(d => d.Id == id)
+            .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct)
+        ?? throw new NotFoundException("Çatdırılma", id);
 
     public async Task<DeliveryDto> CreateAsync(SaveDeliveryRequest request, CancellationToken ct = default)
     {

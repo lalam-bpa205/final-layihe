@@ -1,26 +1,40 @@
-import { notify } from '../../notify';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import Modal from '../../components/Modal';
-
-const TYPE_LABELS = { 1: 'Yük maşını', 2: 'Furqon', 3: 'Minik', 4: 'Qoşqu' };
-const STATUS = {
-  1: { text: 'Aktiv', cls: 'bg-green-100 text-green-700' },
-  2: { text: 'Səfərdə', cls: 'bg-blue-100 text-blue-700' },
-  3: { text: 'Təmirdə', cls: 'bg-yellow-100 text-yellow-700' },
-  4: { text: 'Deaktiv', cls: 'bg-slate-100 text-slate-600' },
-};
+import { notify } from '../../notify';
+import {
+  PageHeader,
+  Button,
+  Input,
+  Select,
+  SlideOver,
+  EmptyState,
+  SkeletonRows,
+  ConfirmDialog,
+} from '../../components/ui';
+import { VEHICLE_TYPES, VehicleStatusBadge } from './transportShared';
 
 export default function VehiclesPage() {
+  const navigate = useNavigate();
   const [vehicles, setVehicles] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
+  const [pendingStatus, setPendingStatus] = useState(null); // { vehicle, status }
+  const [statusLoading, setStatusLoading] = useState(false);
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
 
-  const load = () => api.get('/vehicles').then(({ data }) => setVehicles(data));
+  const load = () => {
+    setLoading(true);
+    api
+      .get('/vehicles')
+      .then(({ data }) => setVehicles(data))
+      .catch(() => notify.error('Avtomobillər yüklənə bilmədi.'))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -28,9 +42,12 @@ export default function VehiclesPage() {
 
   const openCreate = () => {
     setEditing(null);
-    reset({ plateNumber: '', brand: '', model: '', year: new Date().getFullYear(), type: '1', capacityKg: '' });
+    reset({
+      plateNumber: '', brand: '', model: '',
+      year: new Date().getFullYear(), type: '1', capacityKg: '',
+    });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const openEdit = (v) => {
@@ -40,7 +57,7 @@ export default function VehiclesPage() {
       year: v.year, type: v.type, capacityKg: v.capacityKg,
     });
     setError(null);
-    setModalOpen(true);
+    setPanelOpen(true);
   };
 
   const onSubmit = async (values) => {
@@ -53,7 +70,8 @@ export default function VehiclesPage() {
     try {
       if (editing) await api.put(`/vehicles/${editing.id}`, payload);
       else await api.post('/vehicles', payload);
-      setModalOpen(false);
+      setPanelOpen(false);
+      notify.success(editing ? 'Avtomobil məlumatları yeniləndi.' : 'Yeni avtomobil əlavə olundu.');
       load();
     } catch (err) {
       const data = err.response?.data;
@@ -65,139 +83,170 @@ export default function VehiclesPage() {
     }
   };
 
-  const setStatus = async (v, status) => {
+  const confirmStatus = async () => {
+    if (!pendingStatus) return;
+    setStatusLoading(true);
     try {
-      await api.post(`/vehicles/${v.id}/status`, status, {
+      await api.post(`/vehicles/${pendingStatus.vehicle.id}/status`, pendingStatus.status, {
         headers: { 'Content-Type': 'application/json' },
       });
+      notify.success('Avtomobilin statusu yeniləndi.');
+      setPendingStatus(null);
       load();
     } catch (err) {
       notify.error(err.response?.data?.message ?? 'Xəta baş verdi.');
+    } finally {
+      setStatusLoading(false);
     }
   };
 
-  const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2';
-  const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
+  const toMaintenance = pendingStatus?.status === 3;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Avtomobillər</h2>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
-        >
-          + Yeni avtomobil
-        </button>
-      </div>
+      <PageHeader
+        title="Avtomobillər"
+        description="Avtomobil parkının siyahısı və idarəetmə"
+        actions={<Button onClick={openCreate}>+ Yeni avtomobil</Button>}
+      />
 
-      <div className="bg-white rounded-2xl shadow overflow-x-auto">
+      <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-slate-50/80 text-slate-500">
             <tr>
-              <th className="text-left px-6 py-3 font-semibold">Nömrə</th>
-              <th className="text-left px-6 py-3 font-semibold">Marka / Model</th>
-              <th className="text-left px-6 py-3 font-semibold">İl</th>
-              <th className="text-left px-6 py-3 font-semibold">Növ</th>
-              <th className="text-right px-6 py-3 font-semibold">Tutum (kq)</th>
-              <th className="text-left px-6 py-3 font-semibold">Status</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Nömrə</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Marka / Model</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">İl</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Növ</th>
+              <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider">Tutum (kq)</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Status</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {vehicles.map((v) => {
-              const st = STATUS[v.status] ?? { text: v.status, cls: 'bg-slate-100' };
-              return (
-                <tr key={v.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-3 font-mono font-semibold text-slate-800">{v.plateNumber}</td>
-                  <td className="px-6 py-3">{v.brand} {v.model}</td>
-                  <td className="px-6 py-3">{v.year}</td>
-                  <td className="px-6 py-3">{TYPE_LABELS[v.type] ?? v.type}</td>
-                  <td className="px-6 py-3 text-right">{v.capacityKg.toLocaleString()}</td>
-                  <td className="px-6 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${st.cls}`}>
-                      {st.text}
+            {loading ? (
+              <SkeletonRows rows={5} cols={7} />
+            ) : (
+              vehicles.map((v) => (
+                <tr
+                  key={v.id}
+                  onClick={() => navigate(`/transport/vehicles/${v.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/40"
+                >
+                  <td className="px-6 py-3.5 font-mono font-semibold text-slate-800">{v.plateNumber}</td>
+                  <td className="px-6 py-3.5 text-slate-700">{v.brand} {v.model}</td>
+                  <td className="px-6 py-3.5 text-slate-500 tabular-nums">{v.year}</td>
+                  <td className="px-6 py-3.5 text-slate-600">{VEHICLE_TYPES[v.type] ?? v.type}</td>
+                  <td className="px-6 py-3.5 text-right text-slate-700 tabular-nums">
+                    {v.capacityKg.toLocaleString('az-AZ')}
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <VehicleStatusBadge status={v.status} />
+                  </td>
+                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                    <span className="inline-flex gap-1" onClick={(ev) => ev.stopPropagation()}>
+                      {v.status === 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                          onClick={() => setPendingStatus({ vehicle: v, status: 3 })}
+                        >
+                          Təmirə göndər
+                        </Button>
+                      )}
+                      {v.status === 3 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                          onClick={() => setPendingStatus({ vehicle: v, status: 1 })}
+                        >
+                          Təmirdən qaytar
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(v)}>
+                        Redaktə
+                      </Button>
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-right space-x-2 whitespace-nowrap">
-                    {v.status === 1 && (
-                      <button onClick={() => setStatus(v, 3)} className="text-yellow-600 hover:underline">
-                        Təmirə göndər
-                      </button>
-                    )}
-                    {v.status === 3 && (
-                      <button onClick={() => setStatus(v, 1)} className="text-green-600 hover:underline">
-                        Təmirdən qaytar
-                      </button>
-                    )}
-                    <button onClick={() => openEdit(v)} className="text-blue-600 hover:underline">
-                      Redaktə
-                    </button>
-                  </td>
                 </tr>
-              );
-            })}
-            {vehicles.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
-                  Hələ avtomobil yoxdur.
-                </td>
-              </tr>
+              ))
             )}
           </tbody>
         </table>
+        {!loading && vehicles.length === 0 && (
+          <EmptyState
+            icon="🚛"
+            title="Hələ avtomobil yoxdur"
+            description="İlk avtomobili əlavə edərək parkı formalaşdırın."
+            action={<Button onClick={openCreate}>+ Yeni avtomobil</Button>}
+          />
+        )}
       </div>
 
-      <Modal
-        open={modalOpen}
+      <SlideOver
+        open={panelOpen}
         title={editing ? 'Avtomobili redaktə et' : 'Yeni avtomobil'}
-        onClose={() => setModalOpen(false)}
+        subtitle={editing ? editing.plateNumber : 'Yeni avtomobilin məlumatları'}
+        onClose={() => setPanelOpen(false)}
       >
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-sm">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Dövlət nömrəsi *</label>
-              <input className={inputCls} placeholder="10-AB-123" {...register('plateNumber', { required: true })} />
-            </div>
-            <div>
-              <label className={labelCls}>Növ *</label>
-              <select className={inputCls} {...register('type', { required: true })}>
-                {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
+            <Input
+              label="Dövlət nömrəsi"
+              required
+              placeholder="10-AB-123"
+              {...register('plateNumber', { required: true })}
+            />
+            <Select label="Növ" required {...register('type', { required: true })}>
+              {Object.entries(VEHICLE_TYPES).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Marka *</label>
-              <input className={inputCls} placeholder="Mercedes" {...register('brand', { required: true })} />
-            </div>
-            <div>
-              <label className={labelCls}>Model *</label>
-              <input className={inputCls} placeholder="Actros" {...register('model', { required: true })} />
-            </div>
+            <Input label="Marka" required placeholder="Mercedes" {...register('brand', { required: true })} />
+            <Input label="Model" required placeholder="Actros" {...register('model', { required: true })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Buraxılış ili *</label>
-              <input type="number" className={inputCls} {...register('year', { required: true })} />
-            </div>
-            <div>
-              <label className={labelCls}>Yük tutumu (kq) *</label>
-              <input type="number" step="0.01" className={inputCls} {...register('capacityKg', { required: true })} />
-            </div>
+            <Input label="Buraxılış ili" required type="number" {...register('year', { required: true })} />
+            <Input
+              label="Yük tutumu (kq)"
+              required
+              type="number"
+              step="0.01"
+              min="0"
+              {...register('capacityKg', { required: true })}
+            />
           </div>
-          <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2">
+          <Button type="submit" className="w-full" loading={formState.isSubmitting}>
             Yadda saxla
-          </button>
+          </Button>
         </form>
-      </Modal>
+      </SlideOver>
+
+      <ConfirmDialog
+        open={Boolean(pendingStatus)}
+        title={toMaintenance ? 'Təmirə göndər' : 'Təmirdən qaytar'}
+        message={
+          pendingStatus
+            ? toMaintenance
+              ? `${pendingStatus.vehicle.plateNumber} təmirə göndərilsin? Status "Təmirdə" olacaq.`
+              : `${pendingStatus.vehicle.plateNumber} təmirdən qaytarılsın? Status "Aktiv" olacaq.`
+            : ''
+        }
+        confirmText={toMaintenance ? 'Təmirə göndər' : 'Qaytar'}
+        danger={false}
+        loading={statusLoading}
+        onConfirm={confirmStatus}
+        onCancel={() => setPendingStatus(null)}
+      />
     </div>
   );
 }

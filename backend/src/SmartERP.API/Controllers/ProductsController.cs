@@ -29,6 +29,11 @@ public class ProductsController(IProductService productService) : ControllerBase
     public async Task<ActionResult<List<ProductDto>>> GetLowStock(CancellationToken ct) =>
         Ok(await productService.GetLowStockAsync(ct));
 
+    // Məhsulun analitik detalları: anbar balansları, aylıq statistika, 30 günlük tarixçə
+    [HttpGet("{id:int}/details")]
+    public async Task<ActionResult<ProductDetailsDto>> GetDetails(int id, CancellationToken ct) =>
+        Ok(await productService.GetDetailsAsync(id, ct));
+
     [HttpPost]
     public async Task<ActionResult<ProductDto>> Create(SaveProductRequest request, CancellationToken ct)
     {

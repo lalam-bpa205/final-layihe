@@ -21,7 +21,13 @@ builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));
 
 // ---------- Servislər ----------
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // UTC tarixlər "Z" suffiksi ilə getsin — brauzer düzgün lokala çevirsin
+        options.JsonSerializerOptions.Converters.Add(new SmartERP.API.Serialization.UtcDateTimeConverter());
+        options.JsonSerializerOptions.Converters.Add(new SmartERP.API.Serialization.UtcNullableDateTimeConverter());
+    });
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<INotificationService, SignalRNotificationService>();

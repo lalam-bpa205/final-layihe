@@ -18,6 +18,7 @@ public interface IProductService
     Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<ProductDto> GetByBarcodeAsync(string barcode, CancellationToken ct = default);
     Task<List<ProductDto>> GetLowStockAsync(CancellationToken ct = default);
+    Task<ProductDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default);
     Task<ProductDto> CreateAsync(SaveProductRequest request, CancellationToken ct = default);
     Task<ProductDto> UpdateAsync(int id, SaveProductRequest request, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
@@ -75,6 +76,101 @@ public class ProductService(
             .Where(p => p.CurrentStock <= p.MinStockLevel)
             .OrderBy(p => p.CurrentStock)
             .ToListAsync(ct);
+
+    public async Task<ProductDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default)
+    {
+        var product = await GetByIdAsync(id, ct); // yoxdursa NotFoundException atır
+
+        var movementQuery = unitOfWork.Repository<StockMovement>().Query()
+            .Where(m => m.ProductId == id);
+
+        // Anbarlar üzrə balans (0 olmayan)
+        var stockByWarehouse = (await movementQuery
+                .GroupBy(m => new { m.WarehouseId, WarehouseName = m.Warehouse.Name })
+                .Select(g => new ProductWarehouseStockDto
+                {
+                    WarehouseId = g.Key.WarehouseId,
+                    WarehouseName = g.Key.WarehouseName,
+                    Quantity = g.Sum(m =>
+                        m.Type == StockMovementType.In || m.Type == StockMovementType.TransferIn
+                            ? m.Quantity : -m.Quantity)
+                })
+                .ToListAsync(ct))
+            .Where(x => x.Quantity != 0)
+            .OrderBy(x => x.WarehouseName)
+            .ToList();
+
+        // Cari ayın statistikası
+        var today = DateTime.Today;
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+        var nextMonthStart = monthStart.AddMonths(1);
+
+        var monthMovements = await movementQuery
+            .Where(m => m.CreatedDate >= monthStart && m.CreatedDate < nextMonthStart)
+            .Select(m => new { m.Type, m.Quantity })
+            .ToListAsync(ct);
+
+        var monthlyStats = new ProductMonthlyStatsDto
+        {
+            InQty = monthMovements
+                .Where(m => m.Type == StockMovementType.In || m.Type == StockMovementType.TransferIn)
+                .Sum(m => m.Quantity),
+            OutQty = monthMovements
+                .Where(m => m.Type == StockMovementType.Out || m.Type == StockMovementType.TransferOut)
+                .Sum(m => m.Quantity),
+            MovementCount = monthMovements.Count
+        };
+
+        // Son 30 günün balans tarixçəsi (bütün anbarlar üzrə cəm).
+        // Başlanğıc balans + günbəgün kumulyativ; hərəkətsiz günlərdə əvvəlki balans təkrarlanır.
+        var historyStart = today.AddDays(-29); // bugün daxil 30 nöqtə
+
+        var openingBalance = await movementQuery
+            .Where(m => m.CreatedDate < historyStart)
+            .SumAsync(m =>
+                m.Type == StockMovementType.In || m.Type == StockMovementType.TransferIn
+                    ? m.Quantity : -m.Quantity, ct);
+
+        var dailyDeltas = (await movementQuery
+                .Where(m => m.CreatedDate >= historyStart)
+                .Select(m => new { m.CreatedDate, m.Type, m.Quantity })
+                .ToListAsync(ct))
+            .GroupBy(m => m.CreatedDate.Date)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Sum(m =>
+                    m.Type == StockMovementType.In || m.Type == StockMovementType.TransferIn
+                        ? m.Quantity : -m.Quantity));
+
+        var stockHistory = new List<StockHistoryPointDto>(30);
+        var balance = openingBalance;
+        for (var day = historyStart; day <= today; day = day.AddDays(1))
+        {
+            if (dailyDeltas.TryGetValue(day, out var delta))
+                balance += delta;
+
+            stockHistory.Add(new StockHistoryPointDto
+            {
+                Date = day.ToString("yyyy-MM-dd"),
+                Balance = balance
+            });
+        }
+
+        var recentMovements = await movementQuery
+            .OrderByDescending(m => m.Id)
+            .Take(10)
+            .ProjectTo<StockMovementDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        return new ProductDetailsDto
+        {
+            Product = product,
+            StockByWarehouse = stockByWarehouse,
+            MonthlyStats = monthlyStats,
+            StockHistory = stockHistory,
+            RecentMovements = recentMovements
+        };
+    }
 
     public async Task<ProductDto> CreateAsync(SaveProductRequest request, CancellationToken ct = default)
     {
