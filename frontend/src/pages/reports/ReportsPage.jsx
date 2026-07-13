@@ -1,5 +1,6 @@
-import { notify } from '../../notify';
 import { useRef, useState } from 'react';
+import { PageHeader, Button, Select } from '../../components/ui';
+import { notify } from '../../notify';
 import api from '../../api/axios';
 
 const EXPORTS = [
@@ -26,6 +27,12 @@ const downloadBlob = (data, fileName) => {
   URL.revokeObjectURL(url);
 };
 
+const SectionTitle = ({ children }) => (
+  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+    {children}
+  </h3>
+);
+
 export default function ReportsPage() {
   const [busy, setBusy] = useState(null);
   const [importKind, setImportKind] = useState('products');
@@ -38,6 +45,7 @@ export default function ReportsPage() {
       const { data, headers } = await api.get(`/reports/${key}/excel`, { responseType: 'blob' });
       const match = headers['content-disposition']?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/);
       downloadBlob(data, match?.[1] ?? `${key}.xlsx`);
+      notify.success('Hesabat yükləndi.');
     } catch {
       notify.error('Hesabatı yükləmək mümkün olmadı.');
     } finally {
@@ -46,8 +54,12 @@ export default function ReportsPage() {
   };
 
   const downloadTemplate = async () => {
-    const { data } = await api.get(`/reports/${importKind}/import-template`, { responseType: 'blob' });
-    downloadBlob(data, `${importKind}_template.xlsx`);
+    try {
+      const { data } = await api.get(`/reports/${importKind}/import-template`, { responseType: 'blob' });
+      downloadBlob(data, `${importKind}_template.xlsx`);
+    } catch {
+      notify.error('Şablonu yükləmək mümkün olmadı.');
+    }
   };
 
   const onImport = async (e) => {
@@ -64,6 +76,7 @@ export default function ReportsPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setImportResult(data);
+      notify.success(`${data.addedCount} qeyd import edildi.`);
     } catch (err) {
       setImportResult(
         err.response?.data ?? { addedCount: 0, errors: ['Fayl oxuna bilmədi.'] }
@@ -76,60 +89,55 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Hesabatlar</h2>
+      <PageHeader
+        title="Hesabatlar"
+        description="Bütün modullar üzrə Excel export və toplu məlumat importu"
+      />
 
-      {/* Excel Export */}
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">
-        📊 Excel export
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+      {/* Excel export */}
+      <SectionTitle>📊 Excel export</SectionTitle>
+      <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {EXPORTS.map((r) => (
-          <div key={r.key} className="bg-white rounded-2xl shadow p-5 flex flex-col">
-            <div className="text-3xl mb-2">{r.icon}</div>
-            <h4 className="font-semibold text-slate-800">{r.label}</h4>
-            <p className="text-sm text-slate-500 mb-4 flex-1">{r.desc}</p>
-            <button
+          <div
+            key={r.key}
+            className="flex flex-col rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 text-2xl">
+              {r.icon}
+            </div>
+            <h4 className="font-semibold tracking-tight text-slate-800">{r.label}</h4>
+            <p className="mb-4 flex-1 text-sm text-slate-500">{r.desc}</p>
+            <Button
               onClick={() => exportReport(r.key)}
-              disabled={busy === r.key}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2"
+              loading={busy === r.key}
+              className="w-full"
             >
               {busy === r.key ? 'Hazırlanır...' : '⬇ Excel yüklə'}
-            </button>
+            </Button>
           </div>
         ))}
       </div>
 
-      {/* Excel Import */}
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">
-        📥 Excel import
-      </h3>
-      <div className="bg-white rounded-2xl shadow p-6 max-w-2xl">
-        <div className="flex flex-wrap items-end gap-3 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nə import edilir?</label>
-            <select
-              className="rounded-lg border border-slate-300 px-3 py-2"
-              value={importKind}
-              onChange={(e) => { setImportKind(e.target.value); setImportResult(null); }}
-            >
-              {IMPORTS.map((i) => (
-                <option key={i.key} value={i.key}>{i.label}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={downloadTemplate}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+      {/* Excel import */}
+      <SectionTitle>📥 Excel import</SectionTitle>
+      <div className="max-w-2xl rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <Select
+            label="Nə import edilir?"
+            className="w-48"
+            value={importKind}
+            onChange={(e) => { setImportKind(e.target.value); setImportResult(null); }}
           >
+            {IMPORTS.map((i) => (
+              <option key={i.key} value={i.key}>{i.label}</option>
+            ))}
+          </Select>
+          <Button variant="secondary" onClick={downloadTemplate}>
             ⬇ Şablonu yüklə
-          </button>
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={busy === 'import'}
-            className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2"
-          >
+          </Button>
+          <Button onClick={() => fileRef.current?.click()} loading={busy === 'import'}>
             {busy === 'import' ? 'Yüklənir...' : '⬆ Fayl seç və import et'}
-          </button>
+          </Button>
           <input
             ref={fileRef}
             type="file"
@@ -139,25 +147,25 @@ export default function ReportsPage() {
           />
         </div>
 
-        <p className="text-xs text-slate-400 mb-4">
+        <p className="mb-4 text-xs text-slate-400">
           Qayda: əvvəlcə şablonu yükləyin, doldurun, sonra faylı seçin.
           Hər hansı sətirdə xəta olarsa <b>heç nə</b> import edilmir (all-or-nothing).
         </p>
 
         {importResult && (
           importResult.errors?.length ? (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm">
-              <p className="font-semibold text-red-700 mb-2">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm">
+              <p className="mb-2 font-semibold text-red-700">
                 Import edilmədi — {importResult.errors.length} xəta:
               </p>
-              <ul className="list-disc pl-5 text-red-600 space-y-0.5 max-h-48 overflow-y-auto">
+              <ul className="max-h-48 list-disc space-y-0.5 overflow-y-auto pl-5 text-red-600">
                 {importResult.errors.map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
               </ul>
             </div>
           ) : (
-            <div className="rounded-lg bg-green-50 border border-green-200 text-green-700 px-4 py-3 text-sm font-medium">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
               ✅ {importResult.addedCount} qeyd uğurla import edildi.
             </div>
           )

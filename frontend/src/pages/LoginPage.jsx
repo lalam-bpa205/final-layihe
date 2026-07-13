@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { login } from '../features/auth/authSlice';
+import { Button } from '../components/ui';
 
 const EyeIcon = ({ open }) =>
   open ? (
@@ -42,19 +43,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
-            <div className="text-4xl mb-3">🚚</div>
-            <h1 className="text-3xl font-bold text-slate-800">
+            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-50 to-blue-50 text-3xl ring-8 ring-blue-500/10">
+              🚚
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-800">
               Smart<span className="text-blue-600">ERP</span>
             </h1>
             <p className="text-slate-500 mt-2">Logistika İdarəetmə Sistemi</p>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+            <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
               {error}
             </div>
           )}
@@ -67,7 +70,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 autoComplete="username"
-                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                 placeholder="admin"
                 {...register('userNameOrEmail', {
                   required: 'İstifadəçi adı və ya email boş ola bilməz.',
@@ -86,7 +89,7 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 pr-11 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 pr-11 transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                   placeholder="••••••••"
                   {...register('password', {
                     required: 'Şifrə boş ola bilməz.',
@@ -107,13 +110,9 @@ export default function LoginPage() {
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 transition-colors"
-            >
+            <Button type="submit" size="lg" loading={loading} className="w-full py-2.5 font-semibold">
               {loading ? 'Yoxlanılır...' : 'Daxil ol'}
-            </button>
+            </Button>
           </form>
         </div>
 

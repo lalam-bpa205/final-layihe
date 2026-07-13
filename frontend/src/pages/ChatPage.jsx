@@ -122,7 +122,7 @@ export default function ChatPage() {
             <button
               key={u.id}
               onClick={() => openConversation(u)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700/60 ${
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-700/60 ${
                 selected?.id === u.id ? 'bg-slate-700' : ''
               }`}
             >
@@ -161,10 +161,10 @@ export default function ChatPage() {
                 {messages.map((m) => (
                   <div key={m.id} className={`flex ${m.isMine ? 'justify-end' : 'justify-start'}`}>
                     <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                      className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-sm ${
                         m.isMine
-                          ? 'bg-blue-600 text-white rounded-br-md'
-                          : 'bg-slate-700 text-slate-100 rounded-bl-md'
+                          ? 'rounded-br-md bg-gradient-to-r from-indigo-600 to-blue-600 text-white'
+                          : 'rounded-bl-md bg-slate-700 text-slate-100'
                       }`}
                     >
                       <p className="text-sm whitespace-pre-wrap break-words">{m.text}</p>
@@ -175,9 +175,11 @@ export default function ChatPage() {
                   </div>
                 ))}
                 {messages.length === 0 && (
-                  <p className="text-center text-sm text-slate-500 py-10">
-                    Hələ mesaj yoxdur — ilk mesajı siz yazın!
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="mb-3 text-4xl">💬</div>
+                    <p className="text-sm font-medium text-slate-300">Hələ mesaj yoxdur</p>
+                    <p className="mt-1 text-sm text-slate-500">İlk mesajı siz yazın!</p>
+                  </div>
                 )}
                 <div ref={bottomRef} />
               </div>
@@ -192,7 +194,7 @@ export default function ChatPage() {
                 />
                 <button
                   disabled={!text.trim() || sending}
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-5"
+                  className="rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-5 font-medium text-white shadow-sm transition-all hover:from-indigo-500 hover:to-blue-500 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Göndər
                 </button>
