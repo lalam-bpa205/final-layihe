@@ -1,21 +1,47 @@
-import { notify } from '../../notify';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import Modal from '../../components/Modal';
+import { notify } from '../../notify';
+import {
+  PageHeader,
+  Button,
+  Input,
+  SlideOver,
+  ConfirmDialog,
+  EmptyState,
+  SkeletonRows,
+  Avatar,
+} from '../../components/ui';
 
-function PartnerPage({ title, singular, endpoint, orderLabel }) {
+function PartnerPage({ title, singular, description, endpoint, profilePath, icon }) {
+  const navigate = useNavigate();
   const [partners, setPartners] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState } = useForm();
+
+  // Axtarış debounce (300ms)
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const load = useCallback(() => {
     const params = search ? { search } : {};
-    api.get(endpoint, { params }).then(({ data }) => setPartners(data));
+    setLoading(true);
+    api
+      .get(endpoint, { params })
+      .then(({ data }) => setPartners(data))
+      .catch(() => notify.error('Siyahı yüklənə bilmədi.'))
+      .finally(() => setLoading(false));
   }, [endpoint, search]);
 
   useEffect(() => {
@@ -26,7 +52,7 @@ function PartnerPage({ title, singular, endpoint, orderLabel }) {
     setEditing(null);
     reset({ name: '', contactName: '', phone: '', email: '', address: '' });
     setError(null);
-    setModalOpen(true);
+    setFormOpen(true);
   };
 
   const openEdit = (p) => {
@@ -36,7 +62,7 @@ function PartnerPage({ title, singular, endpoint, orderLabel }) {
       email: p.email ?? '', address: p.address ?? '',
     });
     setError(null);
-    setModalOpen(true);
+    setFormOpen(true);
   };
 
   const onSubmit = async (values) => {
@@ -50,7 +76,8 @@ function PartnerPage({ title, singular, endpoint, orderLabel }) {
     try {
       if (editing) await api.put(`${endpoint}/${editing.id}`, payload);
       else await api.post(endpoint, payload);
-      setModalOpen(false);
+      setFormOpen(false);
+      notify.success(editing ? 'Dəyişikliklər yadda saxlanıldı.' : 'Qeyd yaradıldı.');
       load();
     } catch (err) {
       const data = err.response?.data;
@@ -62,117 +89,147 @@ function PartnerPage({ title, singular, endpoint, orderLabel }) {
     }
   };
 
-  const onDelete = async (p) => {
-    if (!confirm(`"${p.name}" silinsin?`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleteLoading(true);
     try {
-      await api.delete(`${endpoint}/${p.id}`);
+      await api.delete(`${endpoint}/${pendingDelete.id}`);
+      notify.success('Qeyd silindi.');
+      setPendingDelete(null);
       load();
     } catch (err) {
       notify.error(err.response?.data?.message ?? 'Silmək mümkün olmadı.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
-  const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2';
-  const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
-        >
-          + Yeni {singular}
-        </button>
-      </div>
-
-      <input
-        placeholder="Ad üzrə axtar..."
-        className="rounded-lg border border-slate-300 px-3 py-2 w-72 mb-4"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
+      <PageHeader
+        title={title}
+        description={description}
+        actions={<Button onClick={openCreate}>+ Yeni {singular}</Button>}
       />
 
-      <div className="bg-white rounded-2xl shadow overflow-x-auto">
+      {/* Axtarış */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative w-80 max-w-full">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+            🔍
+          </span>
+          <input
+            placeholder="Ad üzrə axtar..."
+            className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-slate-50/80 text-slate-500">
             <tr>
-              <th className="text-left px-6 py-3 font-semibold">Ad</th>
-              <th className="text-left px-6 py-3 font-semibold">Əlaqədar şəxs</th>
-              <th className="text-left px-6 py-3 font-semibold">Telefon</th>
-              <th className="text-left px-6 py-3 font-semibold">Email</th>
-              <th className="text-left px-6 py-3 font-semibold">{orderLabel}</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Ad</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Əlaqədar şəxs</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Telefon</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Email</th>
+              <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider">Sifariş sayı</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {partners.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50">
-                <td className="px-6 py-3 font-medium text-slate-800">{p.name}</td>
-                <td className="px-6 py-3 text-slate-500">{p.contactName || '—'}</td>
-                <td className="px-6 py-3">{p.phone || '—'}</td>
-                <td className="px-6 py-3 text-slate-500">{p.email || '—'}</td>
-                <td className="px-6 py-3">{p.orderCount}</td>
-                <td className="px-6 py-3 text-right space-x-2 whitespace-nowrap">
-                  <button onClick={() => openEdit(p)} className="text-blue-600 hover:underline">
-                    Redaktə
-                  </button>
-                  <button onClick={() => onDelete(p)} className="text-red-600 hover:underline">
-                    Sil
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {partners.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
-                  Qeyd tapılmadı.
-                </td>
-              </tr>
+            {loading ? (
+              <SkeletonRows rows={6} cols={6} />
+            ) : (
+              partners.map((p) => (
+                <tr
+                  key={p.id}
+                  onClick={() => navigate(`${profilePath}/${p.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-indigo-50/40"
+                >
+                  <td className="px-6 py-3.5">
+                    <span className="flex items-center gap-3">
+                      <Avatar name={p.name} size="sm" />
+                      <span className="font-medium text-slate-800">{p.name}</span>
+                    </span>
+                  </td>
+                  <td className="px-6 py-3.5 text-slate-500">{p.contactName || '—'}</td>
+                  <td className="px-6 py-3.5 tabular-nums text-slate-700">{p.phone || '—'}</td>
+                  <td className="px-6 py-3.5 text-slate-500">{p.email || '—'}</td>
+                  <td className="px-6 py-3.5 text-right tabular-nums font-semibold text-slate-800">
+                    {p.orderCount}
+                  </td>
+                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                    <span className="inline-flex gap-1" onClick={(ev) => ev.stopPropagation()}>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>
+                        Redaktə
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setPendingDelete(p)}
+                      >
+                        Sil
+                      </Button>
+                    </span>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
+        {!loading && partners.length === 0 && (
+          <EmptyState
+            icon={icon}
+            title={search ? 'Nəticə tapılmadı' : `Hələ ${singular} yoxdur`}
+            description={
+              search
+                ? 'Axtarış şərtinə uyğun qeyd tapılmadı.'
+                : `İlk ${singular} qeydini yaradaraq başlayın.`
+            }
+            action={!search && <Button onClick={openCreate}>+ Yeni {singular}</Button>}
+          />
+        )}
       </div>
 
-      <Modal
-        open={modalOpen}
-        title={editing ? `${singular} redaktəsi` : `Yeni ${singular}`}
-        onClose={() => setModalOpen(false)}
+      {/* Yaratma / redaktə */}
+      <SlideOver
+        open={formOpen}
+        title={editing ? `${editing.name} — redaktə` : `Yeni ${singular}`}
+        subtitle={editing ? 'Mövcud qeydin məlumatlarını yenilə' : 'Yeni qeydin əsas məlumatları'}
+        onClose={() => setFormOpen(false)}
       >
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-sm">
             {error}
           </div>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className={labelCls}>Ad *</label>
-            <input className={inputCls} {...register('name', { required: true })} />
-          </div>
+          <Input label="Ad" required {...register('name', { required: true })} />
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Əlaqədar şəxs</label>
-              <input className={inputCls} {...register('contactName')} />
-            </div>
-            <div>
-              <label className={labelCls}>Telefon</label>
-              <input className={inputCls} {...register('phone')} />
-            </div>
+            <Input label="Əlaqədar şəxs" {...register('contactName')} />
+            <Input label="Telefon" {...register('phone')} />
           </div>
-          <div>
-            <label className={labelCls}>Email</label>
-            <input type="email" className={inputCls} {...register('email')} />
-          </div>
-          <div>
-            <label className={labelCls}>Ünvan</label>
-            <input className={inputCls} {...register('address')} />
-          </div>
-          <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2">
+          <Input label="Email" type="email" {...register('email')} />
+          <Input label="Ünvan" {...register('address')} />
+          <Button type="submit" className="w-full" loading={formState.isSubmitting}>
             Yadda saxla
-          </button>
+          </Button>
         </form>
-      </Modal>
+      </SlideOver>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Qeydi sil"
+        message={pendingDelete ? `"${pendingDelete.name}" silinsin? Bu əməliyyat geri qaytarıla bilməz.` : ''}
+        confirmText="Sil"
+        loading={deleteLoading}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
@@ -182,8 +239,10 @@ export function CustomersPage() {
     <PartnerPage
       title="Müştərilər"
       singular="müştəri"
+      description="Satış sifarişlərinin tərəfdaşları və əlaqə məlumatları"
       endpoint="/customers"
-      orderLabel="Sifariş sayı"
+      profilePath="/sales/customers"
+      icon="🤝"
     />
   );
 }
@@ -193,8 +252,10 @@ export function SuppliersPage() {
     <PartnerPage
       title="Təchizatçılar"
       singular="təchizatçı"
+      description="Alış sifarişlərinin tərəfdaşları və əlaqə məlumatları"
       endpoint="/suppliers"
-      orderLabel="Sifariş sayı"
+      profilePath="/sales/suppliers"
+      icon="🏗️"
     />
   );
 }

@@ -21,12 +21,17 @@ import VehiclesPage from './pages/transport/VehiclesPage';
 import VehicleDetailPage from './pages/transport/VehicleDetailPage';
 import DriversPage from './pages/transport/DriversPage';
 import VehicleLogsPage from './pages/transport/VehicleLogsPage';
+import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
 import TransactionsPage from './pages/finance/TransactionsPage';
 import InvoicesPage from './pages/finance/InvoicesPage';
+import InvoiceDetailPage from './pages/finance/InvoiceDetailPage';
 import BudgetPage from './pages/finance/BudgetPage';
 import FinanceCategoriesPage from './pages/finance/FinanceCategoriesPage';
+import SalesDashboardPage from './pages/sales/SalesDashboardPage';
 import { CustomersPage, SuppliersPage } from './pages/sales/PartnersPages';
 import { SalesOrdersPage, PurchaseOrdersPage } from './pages/sales/OrdersPages';
+import PartnerDetailPage from './pages/sales/PartnerDetailPage';
+import OrderDetailPage from './pages/sales/OrderDetailPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import AiChatPage from './pages/ai/AiChatPage';
 import ChatPage from './pages/ChatPage';
@@ -66,14 +71,21 @@ export default function App() {
           <Route path="/transport/vehicles/:id" element={<VehicleDetailPage />} />
           <Route path="/transport/drivers" element={<DriversPage />} />
           <Route path="/transport/logs" element={<VehicleLogsPage />} />
+          <Route path="/finance" element={<FinanceDashboardPage />} />
           <Route path="/finance/transactions" element={<TransactionsPage />} />
           <Route path="/finance/invoices" element={<InvoicesPage />} />
+          <Route path="/finance/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/finance/budgets" element={<BudgetPage />} />
           <Route path="/finance/categories" element={<FinanceCategoriesPage />} />
+          <Route path="/sales" element={<SalesDashboardPage />} />
           <Route path="/sales/sales-orders" element={<SalesOrdersPage />} />
+          <Route path="/sales/sales-orders/:id" element={<OrderDetailPage kind="sales" />} />
           <Route path="/sales/purchase-orders" element={<PurchaseOrdersPage />} />
+          <Route path="/sales/purchase-orders/:id" element={<OrderDetailPage kind="purchase" />} />
           <Route path="/sales/customers" element={<CustomersPage />} />
+          <Route path="/sales/customers/:id" element={<PartnerDetailPage kind="customer" />} />
           <Route path="/sales/suppliers" element={<SuppliersPage />} />
+          <Route path="/sales/suppliers/:id" element={<PartnerDetailPage kind="supplier" />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/ai" element={<AiChatPage />} />
           <Route path="/management/statistics" element={<StatisticsPage />} />

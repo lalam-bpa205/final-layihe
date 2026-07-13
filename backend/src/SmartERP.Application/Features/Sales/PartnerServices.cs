@@ -6,12 +6,14 @@ using SmartERP.Application.Common.Exceptions;
 using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Sales.Dtos;
 using SmartERP.Domain.Entities.Sales;
+using SmartERP.Domain.Enums;
 
 namespace SmartERP.Application.Features.Sales;
 
 public interface ICustomerService
 {
     Task<List<PartnerDto>> GetAllAsync(string? search = null, CancellationToken ct = default);
+    Task<CustomerDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default);
     Task<PartnerDto> CreateAsync(SavePartnerRequest request, CancellationToken ct = default);
     Task<PartnerDto> UpdateAsync(int id, SavePartnerRequest request, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
@@ -32,6 +34,52 @@ public class CustomerService(
             .OrderBy(c => c.Name)
             .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
+    }
+
+    public async Task<CustomerDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default)
+    {
+        var customer = await unitOfWork.Repository<Customer>().Query()
+            .Where(c => c.Id == id)
+            .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Müştəri", id);
+
+        var orderQuery = unitOfWork.Repository<SalesOrder>().Query()
+            .Where(o => o.CustomerId == id);
+
+        var orderCount = await orderQuery.CountAsync(ct);
+        var confirmedCount = await orderQuery
+            .CountAsync(o => o.Status == SalesOrderStatus.Confirmed, ct);
+        var totalAmount = await orderQuery
+            .Where(o => o.Status == SalesOrderStatus.Confirmed)
+            .SumAsync(o => (decimal?)o.TotalAmount, ct) ?? 0;
+
+        // Təsdiqlənmiş sifarişlərə bağlı fakturaların qalıq borcu (ləğv edilmişlər xaric)
+        var outstandingAmount = await orderQuery
+            .Where(o => o.Status == SalesOrderStatus.Confirmed
+                && o.Invoice != null && o.Invoice.Status != InvoiceStatus.Cancelled)
+            .Select(o => o.Invoice!.TotalAmount
+                - (o.Invoice!.Payments.Sum(p => (decimal?)p.Amount) ?? 0))
+            .SumAsync(x => (decimal?)x, ct) ?? 0;
+
+        var recentOrders = await orderQuery
+            .OrderByDescending(o => o.Id)
+            .Take(10)
+            .ProjectTo<SalesOrderDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        return new CustomerDetailsDto
+        {
+            Customer = customer,
+            Stats = new CustomerStatsDto
+            {
+                OrderCount = orderCount,
+                ConfirmedCount = confirmedCount,
+                TotalAmount = totalAmount,
+                OutstandingAmount = outstandingAmount
+            },
+            RecentOrders = recentOrders
+        };
     }
 
     public async Task<PartnerDto> CreateAsync(SavePartnerRequest request, CancellationToken ct = default)
@@ -92,6 +140,7 @@ public class CustomerService(
 public interface ISupplierService
 {
     Task<List<PartnerDto>> GetAllAsync(string? search = null, CancellationToken ct = default);
+    Task<SupplierDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default);
     Task<PartnerDto> CreateAsync(SavePartnerRequest request, CancellationToken ct = default);
     Task<PartnerDto> UpdateAsync(int id, SavePartnerRequest request, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
@@ -112,6 +161,43 @@ public class SupplierService(
             .OrderBy(s => s.Name)
             .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
+    }
+
+    public async Task<SupplierDetailsDto> GetDetailsAsync(int id, CancellationToken ct = default)
+    {
+        var supplier = await unitOfWork.Repository<Supplier>().Query()
+            .Where(s => s.Id == id)
+            .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Təchizatçı", id);
+
+        var orderQuery = unitOfWork.Repository<PurchaseOrder>().Query()
+            .Where(o => o.SupplierId == id);
+
+        var orderCount = await orderQuery.CountAsync(ct);
+        var receivedCount = await orderQuery
+            .CountAsync(o => o.Status == PurchaseOrderStatus.Received, ct);
+        var totalAmount = await orderQuery
+            .Where(o => o.Status == PurchaseOrderStatus.Received)
+            .SumAsync(o => (decimal?)o.TotalAmount, ct) ?? 0;
+
+        var recentOrders = await orderQuery
+            .OrderByDescending(o => o.Id)
+            .Take(10)
+            .ProjectTo<PurchaseOrderDto>(mapper.ConfigurationProvider)
+            .ToListAsync(ct);
+
+        return new SupplierDetailsDto
+        {
+            Supplier = supplier,
+            Stats = new SupplierStatsDto
+            {
+                OrderCount = orderCount,
+                ReceivedCount = receivedCount,
+                TotalAmount = totalAmount
+            },
+            RecentOrders = recentOrders
+        };
     }
 
     public async Task<PartnerDto> CreateAsync(SavePartnerRequest request, CancellationToken ct = default)

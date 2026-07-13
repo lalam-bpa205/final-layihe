@@ -14,6 +14,10 @@ public class CustomersController(ICustomerService customerService) : ControllerB
     public async Task<ActionResult<List<PartnerDto>>> GetAll([FromQuery] string? search, CancellationToken ct) =>
         Ok(await customerService.GetAllAsync(search, ct));
 
+    [HttpGet("{id:int}/details")]
+    public async Task<ActionResult<CustomerDetailsDto>> GetDetails(int id, CancellationToken ct) =>
+        Ok(await customerService.GetDetailsAsync(id, ct));
+
     [HttpPost]
     public async Task<ActionResult<PartnerDto>> Create(SavePartnerRequest request, CancellationToken ct) =>
         Ok(await customerService.CreateAsync(request, ct));

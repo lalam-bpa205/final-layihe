@@ -127,3 +127,38 @@ public class CategorySummaryDto
     public string CategoryName { get; set; } = null!;
     public decimal Amount { get; set; }
 }
+
+// ---------- Overview (icmal/analitika) ----------
+public class FinanceOverviewDto
+{
+    public decimal MonthIncome { get; set; }
+    public decimal MonthExpense { get; set; }
+    public decimal MonthProfit => MonthIncome - MonthExpense;
+    public InvoiceBucketDto UnpaidInvoices { get; set; } = new();
+    public InvoiceBucketDto OverdueInvoices { get; set; } = new();
+    public List<CashflowPointDto> Cashflow { get; set; } = [];
+    public List<NamedAmountDto> ExpenseByCategory { get; set; } = [];
+    public List<InvoiceDto> UpcomingInvoices { get; set; } = [];
+    public List<FinanceTransactionDto> RecentTransactions { get; set; } = [];
+}
+
+/// <summary>Faktura qrupu: say + qalıq borc cəmi.</summary>
+public class InvoiceBucketDto
+{
+    public int Count { get; set; }
+    public decimal Amount { get; set; }
+}
+
+/// <summary>Aylıq pul axını nöqtəsi ("yyyy-MM").</summary>
+public class CashflowPointDto
+{
+    public string Month { get; set; } = null!;
+    public decimal Income { get; set; }
+    public decimal Expense { get; set; }
+}
+
+public class NamedAmountDto
+{
+    public string Name { get; set; } = null!;
+    public decimal Amount { get; set; }
+}

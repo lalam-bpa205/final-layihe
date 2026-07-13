@@ -80,3 +80,67 @@ public class PurchaseOrderDto
     public string? Note { get; set; }
     public List<OrderItemDto> Items { get; set; } = [];
 }
+
+// ---------- İcmal / Analitika ----------
+public class OrderBucketDto
+{
+    public int OrderCount { get; set; }
+    public decimal Amount { get; set; }
+}
+
+public class TopCustomerDto
+{
+    public int CustomerId { get; set; }
+    public string Name { get; set; } = null!;
+    public int OrderCount { get; set; }
+    public decimal TotalAmount { get; set; }
+}
+
+public class SalesTrendPointDto
+{
+    /// <summary>Ay: "yyyy-MM"</summary>
+    public string Month { get; set; } = null!;
+    public decimal Sales { get; set; }
+    public decimal Purchases { get; set; }
+}
+
+public class SalesOverviewDto
+{
+    public OrderBucketDto MonthSales { get; set; } = null!;
+    public OrderBucketDto MonthPurchases { get; set; } = null!;
+    public int PendingSalesCount { get; set; }
+    public int PendingPurchaseCount { get; set; }
+    public List<TopCustomerDto> TopCustomers { get; set; } = [];
+    public List<SalesTrendPointDto> MonthlyTrend { get; set; } = [];
+    public List<SalesOrderDto> RecentSalesOrders { get; set; } = [];
+}
+
+// ---------- Tərəfdaş detalları ----------
+public class CustomerStatsDto
+{
+    public int OrderCount { get; set; }
+    public int ConfirmedCount { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal OutstandingAmount { get; set; }
+}
+
+public class CustomerDetailsDto
+{
+    public PartnerDto Customer { get; set; } = null!;
+    public CustomerStatsDto Stats { get; set; } = null!;
+    public List<SalesOrderDto> RecentOrders { get; set; } = [];
+}
+
+public class SupplierStatsDto
+{
+    public int OrderCount { get; set; }
+    public int ReceivedCount { get; set; }
+    public decimal TotalAmount { get; set; }
+}
+
+public class SupplierDetailsDto
+{
+    public PartnerDto Supplier { get; set; } = null!;
+    public SupplierStatsDto Stats { get; set; } = null!;
+    public List<PurchaseOrderDto> RecentOrders { get; set; } = [];
+}

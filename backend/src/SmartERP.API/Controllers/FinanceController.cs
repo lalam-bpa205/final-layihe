@@ -13,8 +13,14 @@ namespace SmartERP.API.Controllers;
 public class FinanceController(
     ITransactionCategoryService categoryService,
     IFinanceTransactionService transactionService,
-    IBudgetService budgetService) : ControllerBase
+    IBudgetService budgetService,
+    IFinanceOverviewService overviewService) : ControllerBase
 {
+    // ---------- İcmal / Analitika ----------
+    [HttpGet("overview")]
+    public async Task<ActionResult<FinanceOverviewDto>> GetOverview(CancellationToken ct) =>
+        Ok(await overviewService.GetOverviewAsync(ct));
+
     // ---------- Kateqoriyalar ----------
     [HttpGet("categories")]
     public async Task<ActionResult<List<TransactionCategoryDto>>> GetCategories(

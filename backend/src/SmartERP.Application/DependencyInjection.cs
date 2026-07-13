@@ -45,11 +45,13 @@ public static class DependencyInjection
         services.AddScoped<IFinanceTransactionService, FinanceTransactionService>();
         services.AddScoped<IBudgetService, BudgetService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IFinanceOverviewService, FinanceOverviewService>();
 
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<ISalesOrderService, SalesOrderService>();
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+        services.AddScoped<ISalesOverviewService, SalesOverviewService>();
 
         services.AddScoped<IDashboardService, DashboardService>();
 
