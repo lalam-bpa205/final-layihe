@@ -23,6 +23,15 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
 
     public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken ct = default)
     {
+        // Artıq açıq tranzaksiya varsa (iç-içə çağırış) yenisini açmırıq —
+        // əməliyyat mövcud tranzaksiyaya qoşulur, commit/rollback ən xarici blokun məsuliyyətidir.
+        if (context.Database.CurrentTransaction is not null)
+        {
+            await action(ct);
+            await context.SaveChangesAsync(ct);
+            return;
+        }
+
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
         try
         {
@@ -33,12 +42,20 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
         catch
         {
             await transaction.RollbackAsync(ct);
+            RollbackTrackedChanges();
             throw;
         }
     }
 
     public async Task<TResult> ExecuteInTransactionAsync<TResult>(Func<CancellationToken, Task<TResult>> action, CancellationToken ct = default)
     {
+        if (context.Database.CurrentTransaction is not null)
+        {
+            var innerResult = await action(ct);
+            await context.SaveChangesAsync(ct);
+            return innerResult;
+        }
+
         await using var transaction = await context.Database.BeginTransactionAsync(ct);
         try
         {
@@ -50,7 +67,15 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
         catch
         {
             await transaction.RollbackAsync(ct);
+            RollbackTrackedChanges();
             throw;
         }
     }
+
+    /// <summary>
+    /// DB rollback edildikdən sonra ChangeTracker-da qalan "kirli" vəziyyəti təmizləyir.
+    /// Əks halda eyni sorğu daxilində növbəti SaveChanges rollback olunmuş
+    /// dəyişiklikləri təkrar yazmağa cəhd edərdi.
+    /// </summary>
+    private void RollbackTrackedChanges() => context.ChangeTracker.Clear();
 }

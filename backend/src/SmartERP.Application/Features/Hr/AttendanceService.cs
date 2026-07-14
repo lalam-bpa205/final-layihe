@@ -83,30 +83,36 @@ public class AttendanceService(IUnitOfWork unitOfWork, IMapper mapper) : IAttend
 
     public async Task<AttendanceDto> CheckInAsync(CheckInRequest request, CancellationToken ct = default)
     {
-        var employee = await unitOfWork.Repository<Employee>().GetByIdAsync(request.EmployeeId, ct)
-            ?? throw new NotFoundException("İşçi", request.EmployeeId);
-
-        // İşdən çıxmış işçi check-in edə bilməz
-        if (employee.Status == EmployeeStatus.Terminated)
-            throw new ConflictException("İşdən çıxmış işçi check-in edə bilməz.");
-
-        var today = DateOnly.FromDateTime(DateTime.Now);
-        var now = TimeOnly.FromDateTime(DateTime.Now);
-
-        var repo = unitOfWork.Repository<Attendance>();
-        if (await repo.AnyAsync(a => a.EmployeeId == request.EmployeeId && a.Date == today, ct))
-            throw new ConflictException("Bu işçi bu gün artıq check-in edib.");
-
-        var attendance = new Attendance
+        // Təkrar check-in yoxlaması və yazı bir tranzaksiyada — paralel iki
+        // sorğu eyni gün üçün ikinci qeyd yarada bilməsin.
+        var attendance = await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            EmployeeId = request.EmployeeId,
-            Date = today,
-            CheckIn = now,
-            Status = now > WorkDayStart ? AttendanceStatus.Late : AttendanceStatus.Present
-        };
+            var employee = await unitOfWork.Repository<Employee>().GetByIdAsync(request.EmployeeId, token)
+                ?? throw new NotFoundException("İşçi", request.EmployeeId);
 
-        await repo.AddAsync(attendance, ct);
-        await unitOfWork.SaveChangesAsync(ct);
+            // İşdən çıxmış işçi check-in edə bilməz
+            if (employee.Status == EmployeeStatus.Terminated)
+                throw new ConflictException("İşdən çıxmış işçi check-in edə bilməz.");
+
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var now = TimeOnly.FromDateTime(DateTime.Now);
+
+            var repo = unitOfWork.Repository<Attendance>();
+            if (await repo.AnyAsync(a => a.EmployeeId == request.EmployeeId && a.Date == today, token))
+                throw new ConflictException("Bu işçi bu gün artıq check-in edib.");
+
+            var newRecord = new Attendance
+            {
+                EmployeeId = request.EmployeeId,
+                Date = today,
+                CheckIn = now,
+                Status = now > WorkDayStart ? AttendanceStatus.Late : AttendanceStatus.Present
+            };
+
+            await repo.AddAsync(newRecord, token);
+            return newRecord;
+        }, ct);
+
         return await GetDtoAsync(attendance.Id, ct);
     }
 

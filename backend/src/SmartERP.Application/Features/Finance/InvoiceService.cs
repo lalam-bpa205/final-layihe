@@ -172,18 +172,23 @@ public class InvoiceService(
 
     public async Task<InvoiceDto> CancelAsync(int id, CancellationToken ct = default)
     {
-        var invoice = await unitOfWork.Repository<Invoice>().Query()
-            .Include(i => i.Payments)
-            .FirstOrDefaultAsync(i => i.Id == id, ct)
-            ?? throw new NotFoundException("Faktura", id);
+        // Ödəniş yoxlaması və ləğv bir tranzaksiyada — yoxlama ilə yazı arasında
+        // paralel ödəniş qeydə alınıb "ödənişli faktura" ləğv olunmasın.
+        await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            var invoice = await unitOfWork.Repository<Invoice>().Query()
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == id, token)
+                ?? throw new NotFoundException("Faktura", id);
 
-        if (invoice.Payments.Count > 0)
-            throw new ConflictException("Ödənişi olan faktura ləğv edilə bilməz.");
-        if (invoice.Status == InvoiceStatus.Cancelled)
-            throw new ConflictException("Faktura artıq ləğv edilib.");
+            if (invoice.Payments.Count > 0)
+                throw new ConflictException("Ödənişi olan faktura ləğv edilə bilməz.");
+            if (invoice.Status == InvoiceStatus.Cancelled)
+                throw new ConflictException("Faktura artıq ləğv edilib.");
 
-        invoice.Status = InvoiceStatus.Cancelled;
-        await unitOfWork.SaveChangesAsync(ct);
+            invoice.Status = InvoiceStatus.Cancelled;
+        }, ct);
+
         return await GetByIdAsync(id, ct);
     }
 }

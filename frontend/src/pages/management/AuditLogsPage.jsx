@@ -1,24 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../../api/axios';
-
-const ACTIONS = {
-  Created: { text: 'Yaradıldı', cls: 'bg-green-100 text-green-700', icon: '➕' },
-  Updated: { text: 'Yeniləndi', cls: 'bg-blue-100 text-blue-700', icon: '✏️' },
-  Deleted: { text: 'Silindi', cls: 'bg-red-100 text-red-700', icon: '🗑️' },
-};
-
-// Entity adlarının Azərbaycanca qarşılığı
-const ENTITY_LABELS = {
-  User: 'İstifadəçi', Role: 'Rol', UserRole: 'İstifadəçi rolu', UserModuleAccess: 'Modul icazəsi',
-  Department: 'Şöbə', Position: 'Vəzifə', Employee: 'İşçi', Attendance: 'Davamiyyət', LeaveRequest: 'Məzuniyyət sorğusu',
-  Category: 'Kateqoriya', Warehouse: 'Anbar', Product: 'Məhsul', StockMovement: 'Stok hərəkəti',
-  Vehicle: 'Avtomobil', Driver: 'Sürücü', Delivery: 'Çatdırılma', FuelRecord: 'Yanacaq qeydi', MaintenanceRecord: 'Təmir qeydi',
-  TransactionCategory: 'Maliyyə kateqoriyası', FinanceTransaction: 'Maliyyə əməliyyatı', Budget: 'Büdcə',
-  Invoice: 'Faktura', InvoiceItem: 'Faktura sətri', Payment: 'Ödəniş',
-  Customer: 'Müştəri', Supplier: 'Təchizatçı',
-  SalesOrder: 'Satış sifarişi', SalesOrderItem: 'Satış sifarişi sətri',
-  PurchaseOrder: 'Alış sifarişi', PurchaseOrderItem: 'Alış sifarişi sətri',
-};
+import { ACTION_LABELS as ACTIONS, entityLabel } from './managementShared';
 
 // Sahə adlarının qarşılığı
 const FIELD_LABELS = {
@@ -31,7 +13,6 @@ const FIELD_LABELS = {
 };
 
 const fieldLabel = (f) => FIELD_LABELS[f] ?? f;
-const entityLabel = (e) => ENTITY_LABELS[e] ?? e;
 
 function ChangesView({ changes, action }) {
   let parsed = [];
