@@ -124,6 +124,11 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
     await DataSeeder.SeedAsync(db, scope.ServiceProvider.GetRequiredService<IPasswordHasher>());
+
+    // GPS izi olmayan avtomobillər üçün ilkin simulyasiya
+    await scope.ServiceProvider
+        .GetRequiredService<SmartERP.Application.Features.Transport.Gps.IVehicleGpsService>()
+        .SeedMissingAsync();
 }
 
 // ---------- Pipeline ----------

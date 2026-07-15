@@ -46,6 +46,7 @@ export const MODULES = [
       { to: '/transport', label: 'İcmal', icon: '🏠' },
       { to: '/transport/deliveries', label: 'Çatdırılmalar', icon: '🚚' },
       { to: '/transport/vehicles', label: 'Avtomobillər', icon: '🚛' },
+      { to: '/transport/gps', label: 'GPS izləmə', icon: '📍' },
       { to: '/transport/drivers', label: 'Sürücülər', icon: '🧑‍✈️' },
       { to: '/transport/logs', label: 'Yanacaq / Təmir', icon: '⛽' },
     ],

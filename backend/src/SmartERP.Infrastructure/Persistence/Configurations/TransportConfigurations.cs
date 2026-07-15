@@ -108,3 +108,19 @@ public class MaintenanceRecordConfiguration : IEntityTypeConfiguration<Maintenan
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+public class VehicleLocationConfiguration : IEntityTypeConfiguration<VehicleLocation>
+{
+    public void Configure(EntityTypeBuilder<VehicleLocation> builder)
+    {
+        builder.ToTable("VehicleLocations");
+
+        // Track sorğuları (avtomobil üzrə, sıra ilə) sürətli olsun
+        builder.HasIndex(l => new { l.VehicleId, l.Sequence });
+
+        builder.HasOne(l => l.Vehicle)
+            .WithMany()
+            .HasForeignKey(l => l.VehicleId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}

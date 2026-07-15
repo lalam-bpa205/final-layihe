@@ -23,7 +23,7 @@ public class AuditInterceptor(ICurrentUserService currentUser) : SaveChangesInte
 
     // Bu entity-lər loglanmır (texniki/səs-küylü)
     private static readonly HashSet<string> IgnoredEntities =
-        ["RefreshToken", "Notification", "ChatMessage"];
+        ["RefreshToken", "Notification", "ChatMessage", "VehicleLocation"];
 
     private readonly List<(EntityEntry Entry, string Action, string? Changes)> _pending = [];
     private bool _writingAudit;
