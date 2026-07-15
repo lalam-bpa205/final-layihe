@@ -72,3 +72,23 @@ public class CreateLeaveRequestValidator : AbstractValidator<CreateLeaveRequest>
         RuleFor(x => x.Reason).MaximumLength(500);
     }
 }
+
+public class SaveWorkScheduleRequestValidator : AbstractValidator<SaveWorkScheduleRequest>
+{
+    public SaveWorkScheduleRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Qrafik adı boş ola bilməz.")
+            .MaximumLength(100);
+
+        // Ən azı bir iş günü seçilməlidir
+        RuleFor(x => x)
+            .Must(x => x.Monday || x.Tuesday || x.Wednesday || x.Thursday ||
+                       x.Friday || x.Saturday || x.Sunday)
+            .WithMessage("Ən azı bir iş günü seçilməlidir.");
+
+        RuleFor(x => x.EndTime)
+            .GreaterThan(x => x.StartTime)
+            .WithMessage("İş bitmə saatı başlama saatından sonra olmalıdır.");
+    }
+}

@@ -8,6 +8,7 @@ import DepartmentsPage from './pages/hr/DepartmentsPage';
 import PositionsPage from './pages/hr/PositionsPage';
 import AttendancePage from './pages/hr/AttendancePage';
 import LeaveRequestsPage from './pages/hr/LeaveRequestsPage';
+import WorkSchedulesPage from './pages/hr/WorkSchedulesPage';
 import InventoryDashboardPage from './pages/inventory/InventoryDashboardPage';
 import ProductsPage from './pages/inventory/ProductsPage';
 import ProductDetailPage from './pages/inventory/ProductDetailPage';
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/hr/positions" element={<PositionsPage />} />
           <Route path="/hr/attendance" element={<AttendancePage />} />
           <Route path="/hr/leave-requests" element={<LeaveRequestsPage />} />
+          <Route path="/hr/schedules" element={<WorkSchedulesPage />} />
           <Route path="/inventory" element={<InventoryDashboardPage />} />
           <Route path="/inventory/products" element={<ProductsPage />} />
           <Route path="/inventory/products/:id" element={<ProductDetailPage />} />

@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<ILeaveRequestService, LeaveRequestService>();
         services.AddScoped<IHrSummaryService, HrSummaryService>();
+        services.AddScoped<IWorkScheduleService, WorkScheduleService>();
 
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IWarehouseService, WarehouseService>();

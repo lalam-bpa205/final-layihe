@@ -15,6 +15,7 @@ export const MODULES = [
       { to: '/hr/positions', label: 'Vəzifələr', icon: '💼' },
       { to: '/hr/attendance', label: 'Davamiyyət', icon: '🕘' },
       { to: '/hr/leave-requests', label: 'Məzuniyyət', icon: '🌴' },
+      { to: '/hr/schedules', label: 'İş qrafikləri', icon: '🗓️' },
     ],
   },
   {

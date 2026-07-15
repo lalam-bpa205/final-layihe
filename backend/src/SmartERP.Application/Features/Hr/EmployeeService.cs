@@ -98,6 +98,7 @@ public class EmployeeService(
                 Salary = request.Salary,
                 DepartmentId = request.DepartmentId,
                 PositionId = request.PositionId,
+                WorkScheduleId = request.WorkScheduleId,
                 Address = request.Address,
                 EmergencyContact = request.EmergencyContact,
                 Notes = request.Notes
@@ -156,6 +157,7 @@ public class EmployeeService(
         employee.Salary = request.Salary;
         employee.DepartmentId = request.DepartmentId;
         employee.PositionId = request.PositionId;
+        employee.WorkScheduleId = request.WorkScheduleId;
         employee.Address = request.Address;
         employee.EmergencyContact = request.EmergencyContact;
         employee.Notes = request.Notes;

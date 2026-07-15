@@ -26,6 +26,31 @@ public class PositionDto
 
 public record SavePositionRequest(string Title, string? Description, int DepartmentId);
 
+// ---------- WorkSchedule (iş qrafiki) ----------
+public class WorkScheduleDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public bool Monday { get; set; }
+    public bool Tuesday { get; set; }
+    public bool Wednesday { get; set; }
+    public bool Thursday { get; set; }
+    public bool Friday { get; set; }
+    public bool Saturday { get; set; }
+    public bool Sunday { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
+    public int EmployeeCount { get; set; }
+    /// <summary>İş günlərinin sayı (1–7).</summary>
+    public int WorkDayCount { get; set; }
+}
+
+public record SaveWorkScheduleRequest(
+    string Name,
+    bool Monday, bool Tuesday, bool Wednesday, bool Thursday,
+    bool Friday, bool Saturday, bool Sunday,
+    TimeOnly StartTime, TimeOnly EndTime);
+
 // ---------- Employee ----------
 public class EmployeeDto
 {
@@ -46,6 +71,8 @@ public class EmployeeDto
     public string? EmergencyContact { get; set; }
     public string? Notes { get; set; }
     public EmployeeStatus Status { get; set; }
+    public int? WorkScheduleId { get; set; }
+    public string? WorkScheduleName { get; set; }
 }
 
 public record SaveEmployeeRequest(
@@ -64,7 +91,8 @@ public record SaveEmployeeRequest(
     List<string>? Modules = null,
     string? Address = null,
     string? EmergencyContact = null,
-    string? Notes = null);
+    string? Notes = null,
+    int? WorkScheduleId = null);
 
 public record SetEmployeeModulesRequest(List<string> Modules);
 
@@ -194,6 +222,9 @@ public class MonthlyAttendanceEmployeeDto
 {
     public int EmployeeId { get; set; }
     public string EmployeeName { get; set; } = null!;
+    public string? WorkScheduleName { get; set; }
+    /// <summary>İş günləri: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]. Qrafik yoxdursa B.e–Cümə fərz olunur.</summary>
+    public bool[] WorkDays { get; set; } = [true, true, true, true, true, false, false];
 }
 
 public class MonthlyAttendanceRecordDto

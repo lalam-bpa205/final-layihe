@@ -69,6 +69,23 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
             .WithOne()
             .HasForeignKey<Employee>(e => e.UserId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Qrafik silinsə işçilər default (null) qrafikə keçir
+        builder.HasOne(e => e.WorkSchedule)
+            .WithMany(w => w.Employees)
+            .HasForeignKey(e => e.WorkScheduleId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public class WorkScheduleConfiguration : IEntityTypeConfiguration<WorkSchedule>
+{
+    public void Configure(EntityTypeBuilder<WorkSchedule> builder)
+    {
+        builder.ToTable("WorkSchedules");
+
+        builder.Property(w => w.Name).HasMaxLength(100).IsRequired();
+        builder.HasIndex(w => w.Name).IsUnique();
     }
 }
 

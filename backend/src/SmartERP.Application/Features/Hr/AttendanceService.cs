@@ -48,14 +48,30 @@ public class AttendanceService(IUnitOfWork unitOfWork, IMapper mapper) : IAttend
         if (departmentId is not null)
             employeeQuery = employeeQuery.Where(e => e.DepartmentId == departmentId);
 
-        var employees = await employeeQuery
+        var employeeRows = await employeeQuery
             .OrderBy(e => e.FirstName).ThenBy(e => e.LastName)
-            .Select(e => new MonthlyAttendanceEmployeeDto
+            .Select(e => new
             {
-                EmployeeId = e.Id,
-                EmployeeName = e.FirstName + " " + e.LastName
+                e.Id,
+                Name = e.FirstName + " " + e.LastName,
+                Schedule = e.WorkSchedule
             })
             .ToListAsync(ct);
+
+        var employees = employeeRows.Select(e => new MonthlyAttendanceEmployeeDto
+        {
+            EmployeeId = e.Id,
+            EmployeeName = e.Name,
+            WorkScheduleName = e.Schedule?.Name,
+            // Qrafik yoxdursa standart B.e–Cümə fərz olunur
+            WorkDays = e.Schedule is null
+                ? [true, true, true, true, true, false, false]
+                :
+                [
+                    e.Schedule.Monday, e.Schedule.Tuesday, e.Schedule.Wednesday,
+                    e.Schedule.Thursday, e.Schedule.Friday, e.Schedule.Saturday, e.Schedule.Sunday
+                ]
+        }).ToList();
 
         var recordQuery = unitOfWork.Repository<Attendance>().Query()
             .Where(a => a.Date >= monthStart && a.Date < nextMonthStart);

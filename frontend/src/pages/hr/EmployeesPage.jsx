@@ -60,6 +60,7 @@ export default function EmployeesPage() {
   const [departmentId, setDepartmentId] = useState('');
   const [departments, setDepartments] = useState([]);
   const [positions, setPositions] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
@@ -103,6 +104,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     api.get('/departments').then(({ data }) => setDepartments(data));
     api.get('/positions').then(({ data }) => setPositions(data));
+    api.get('/work-schedules').then(({ data }) => setSchedules(data));
   }, []);
 
   const filteredPositions = positions.filter(
@@ -114,7 +116,7 @@ export default function EmployeesPage() {
     reset({
       firstName: '', lastName: '', email: '', phone: '',
       birthDate: '', hireDate: new Date().toISOString().slice(0, 10),
-      salary: '', departmentId: '', positionId: '',
+      salary: '', departmentId: '', positionId: '', workScheduleId: '',
       address: '', emergencyContact: '', notes: '',
       createUserAccount: false, userName: '', password: '',
     });
@@ -129,6 +131,7 @@ export default function EmployeesPage() {
       firstName: e.firstName, lastName: e.lastName, email: e.email,
       phone: e.phone ?? '', birthDate: e.birthDate ?? '', hireDate: e.hireDate,
       salary: e.salary, departmentId: e.departmentId, positionId: e.positionId,
+      workScheduleId: e.workScheduleId ?? '',
       address: e.address ?? '', emergencyContact: e.emergencyContact ?? '', notes: e.notes ?? '',
       createUserAccount: false, userName: '', password: '',
     });
@@ -154,6 +157,7 @@ export default function EmployeesPage() {
       salary: Number(values.salary),
       departmentId: Number(values.departmentId),
       positionId: Number(values.positionId),
+      workScheduleId: values.workScheduleId ? Number(values.workScheduleId) : null,
       birthDate: values.birthDate || null,
       phone: values.phone || null,
       address: values.address || null,
@@ -376,6 +380,14 @@ export default function EmployeesPage() {
             <Input label="İşə qəbul" required type="date" {...register('hireDate', { required: true })} />
             <Input label="Maaş (₼)" required type="number" step="0.01" {...register('salary', { required: true })} />
           </div>
+          <Select label="İş qrafiki" {...register('workScheduleId')}>
+            <option value="">Standart (B.e–Cümə)</option>
+            {schedules.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} · {s.startTime.slice(0, 5)}–{s.endTime.slice(0, 5)}
+              </option>
+            ))}
+          </Select>
 
           <div className="border-t border-slate-200 pt-4 space-y-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">

@@ -206,6 +206,14 @@ function MonthlyView() {
     return dow === 0 || dow === 6;
   };
 
+  // İşçinin öz qrafikinə görə həmin günün iş günü olub-olmadığı.
+  // getDay(): 0=Bazar..6=Şənbə → workDays massivi: 0=B.e..6=Bazar
+  const isWorkDayFor = (emp, day) => {
+    const workDays = emp.workDays ?? [true, true, true, true, true, false, false];
+    const dow = new Date(year, month - 1, day).getDay();
+    return workDays[(dow + 6) % 7];
+  };
+
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 3 + i);
   const employees = data.employees ?? [];
 
@@ -241,6 +249,10 @@ function MonthlyView() {
               {s.text}
             </span>
           ))}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-slate-100 ring-1 ring-inset ring-slate-200" />
+            İstirahət günü
+          </span>
         </div>
       </div>
 
@@ -282,30 +294,44 @@ function MonthlyView() {
                   <td className="sticky left-0 z-10 bg-white group-hover:bg-indigo-50/60 px-4 py-2 border-b border-slate-100 whitespace-nowrap transition-colors">
                     <div className="flex items-center gap-2.5">
                       <Avatar name={emp.employeeName} size="sm" />
-                      <span className="font-medium text-slate-800">{emp.employeeName}</span>
+                      <div className="leading-tight">
+                        <span className="block font-medium text-slate-800">{emp.employeeName}</span>
+                        {emp.workScheduleName && (
+                          <span className="block text-[11px] text-slate-400">{emp.workScheduleName}</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   {days.map((d) => {
                     const rec = recordMap[`${emp.employeeId}-${d}`];
                     const st = rec ? STATUS_LABELS[rec.status] : null;
+                    const workDay = isWorkDayFor(emp, d);
+                    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     const tooltip = rec
                       ? `${rec.date} • ${st?.text ?? rec.status}${
                           rec.checkIn ? ` • ${rec.checkIn.slice(0, 5)}` : ''
                         }${rec.checkOut ? ` → ${rec.checkOut.slice(0, 5)}` : ''}`
-                      : `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')} • Qeyd yoxdur`;
+                      : `${dateStr} • ${workDay ? 'Qeyd yoxdur' : 'İstirahət günü'}`;
                     return (
                       <td
                         key={d}
                         title={tooltip}
                         className={`px-1 py-2 text-center border-b border-slate-100 ${
-                          isWeekend(d) ? 'bg-rose-50/40' : ''
+                          !workDay ? 'bg-slate-100/70' : ''
                         }`}
                       >
-                        <span
-                          className={`mx-auto block h-4 w-4 rounded ${
-                            rec ? CELL_COLORS[rec.status] ?? 'bg-slate-300' : 'bg-slate-100'
-                          }`}
-                        />
+                        {rec ? (
+                          <span
+                            className={`mx-auto block h-4 w-4 rounded ${
+                              CELL_COLORS[rec.status] ?? 'bg-slate-300'
+                            }`}
+                          />
+                        ) : workDay ? (
+                          <span className="mx-auto block h-4 w-4 rounded bg-slate-100" />
+                        ) : (
+                          // İstirahət günü — kiçik nöqtə
+                          <span className="mx-auto block h-1 w-1 rounded-full bg-slate-300" />
+                        )}
                       </td>
                     );
                   })}

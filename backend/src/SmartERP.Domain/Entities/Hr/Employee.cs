@@ -24,6 +24,10 @@ public class Employee : BaseEntity
     public int PositionId { get; set; }
     public Position Position { get; set; } = null!;
 
+    /// <summary>İş qrafiki (opsional) — təyin edilməzsə default qrafik istifadə olunur.</summary>
+    public int? WorkScheduleId { get; set; }
+    public WorkSchedule? WorkSchedule { get; set; }
+
     /// <summary>Sistemə giriş hesabı (opsional) — hər işçinin user-i olmaya bilər.</summary>
     public int? UserId { get; set; }
     public User? User { get; set; }

@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.Entities.Hr.Employee> Employees => Set<Domain.Entities.Hr.Employee>();
     public DbSet<Domain.Entities.Hr.Attendance> Attendances => Set<Domain.Entities.Hr.Attendance>();
     public DbSet<Domain.Entities.Hr.LeaveRequest> LeaveRequests => Set<Domain.Entities.Hr.LeaveRequest>();
+    public DbSet<Domain.Entities.Hr.WorkSchedule> WorkSchedules => Set<Domain.Entities.Hr.WorkSchedule>();
 
     public DbSet<Domain.Entities.Inventory.Category> Categories => Set<Domain.Entities.Inventory.Category>();
     public DbSet<Domain.Entities.Inventory.Warehouse> Warehouses => Set<Domain.Entities.Inventory.Warehouse>();
