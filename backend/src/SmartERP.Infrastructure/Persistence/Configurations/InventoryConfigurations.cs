@@ -27,6 +27,16 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
         builder.Property(w => w.Location).HasMaxLength(300);
 
         builder.HasIndex(w => w.Name).IsUnique();
+
+        // QEYD: KeeperId üzrə UNIQUE indeks qoyulmur — soft-delete ilə ziddiyyət yaradardı
+        // (silinmiş anbar indeks yerini tutub işçini yenidən təyin etməyə imkan verməzdi).
+        // "Bir işçi = bir anbar" qaydası servis səviyyəsində yoxlanılır.
+        builder.HasIndex(w => w.KeeperId);
+
+        builder.HasOne(w => w.Keeper)
+            .WithMany()
+            .HasForeignKey(w => w.KeeperId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 

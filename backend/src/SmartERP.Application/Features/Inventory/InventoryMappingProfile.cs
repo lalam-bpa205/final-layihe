@@ -12,7 +12,14 @@ public class InventoryMappingProfile : Profile
         CreateMap<Category, CategoryDto>()
             .ForMember(d => d.ProductCount, o => o.MapFrom(s => s.Products.Count));
 
-        CreateMap<Warehouse, WarehouseDto>();
+        // Anbardar soft-delete olunubsa qlobal filtr onu gizlədir → sahələr null qalır.
+        CreateMap<Warehouse, WarehouseDto>()
+            .ForMember(d => d.KeeperName, o => o.MapFrom(s =>
+                s.Keeper != null ? s.Keeper.FirstName + " " + s.Keeper.LastName : null))
+            .ForMember(d => d.KeeperPosition, o => o.MapFrom(s =>
+                s.Keeper != null ? s.Keeper.Position.Title : null))
+            .ForMember(d => d.KeeperPhone, o => o.MapFrom(s => s.Keeper != null ? s.Keeper.Phone : null))
+            .ForMember(d => d.KeeperEmail, o => o.MapFrom(s => s.Keeper != null ? s.Keeper.Email : null));
 
         CreateMap<Product, ProductDto>()
             .ForMember(d => d.CategoryName, o => o.MapFrom(s => s.Category.Name))

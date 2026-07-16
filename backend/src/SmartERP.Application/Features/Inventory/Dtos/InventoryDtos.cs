@@ -19,9 +19,16 @@ public class WarehouseDto
     public int Id { get; set; }
     public string Name { get; set; } = null!;
     public string? Location { get; set; }
+
+    /// <summary>Anbardar — təyin olunmayıbsa null.</summary>
+    public int? KeeperId { get; set; }
+    public string? KeeperName { get; set; }
+    public string? KeeperPosition { get; set; }
+    public string? KeeperPhone { get; set; }
+    public string? KeeperEmail { get; set; }
 }
 
-public record SaveWarehouseRequest(string Name, string? Location);
+public record SaveWarehouseRequest(string Name, string? Location, int? KeeperId);
 
 // ---------- Product ----------
 public class ProductDto
