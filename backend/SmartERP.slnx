@@ -5,4 +5,7 @@
     <Project Path="src/SmartERP.Domain/SmartERP.Domain.csproj" />
     <Project Path="src/SmartERP.Infrastructure/SmartERP.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartERP.Tests/SmartERP.Tests.csproj" />
+  </Folder>
 </Solution>

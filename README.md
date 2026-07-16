@@ -48,6 +48,41 @@ npm run dev
 > ⚠️ `npm run dev` "skript icra edilə bilmir" xətası verərsə:
 > `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
 
+### 4. Nümayiş datası
+
+İlk işə düşmədə sistem avtomatik olaraq **12 aylıq real görünüşlü tarixçə** yaradır
+(35 müştəri, ~360 sifariş, ~490 maliyyə əməliyyatı, mövsümi dalğalanma ilə).
+Söndürmək üçün `appsettings.json`:
+
+```jsonc
+"DemoData": { "Enabled": false }
+```
+
+Baza artıq doldurulubsa (`Customers >= 5`) seeder təkrar işləmir.
+
+---
+
+## Testlər
+
+```bash
+cd backend
+dotnet test
+```
+
+**46 test** — əsas diqqət çoxcədvəlli əməliyyatların bütövlüyünə yönəlib:
+
+| Sahə | Nə sübut olunur |
+|---|---|
+| `UnitOfWorkTransactionTests` | DB-yə yazılmış dəyişikliyin rollback olunması, iç-içə tranzaksiyanın xaricinə qoşulması, rollbackdan sonra ChangeTracker-ın təmizlənməsi |
+| `SalesOrderConfirmTests` | İkisətirli sifarişdə 2-ci sətir uğursuz olarsa 1-ci sətrin stok çıxışı da geri qayıdır; faktura yaranmır; status dəyişmir |
+| `StockTransferTests` | Anbarlar arası köçürmədə ümumi miqdar dəyişmir (mal yoxdan yaranmır/itmir); stok çatmayanda heç nə yazılmır |
+| `FuelTransferTests` | Anbar qalığının azalması ilə köçürmə qeydinin atomikliyi; GPS məsafəsinə görə km başına sərfiyyat |
+| `WarehouseKeeperTests` | "Bir işçi = bir anbar" qaydası; aktiv olmayan işçi anbardar təyin edilə bilmir |
+| `GeoMathTests` | Haversine məsafə hesablamasının düzgünlüyü (Bakı–Gəncə ≈ 300 km) |
+
+> Testlər **SQLite in-memory** üzərində işləyir — EF-in `InMemory` provideri
+> tranzaksiyaları dəstəkləmədiyi üçün rollback testləri onunla saxta şəkildə keçərdi.
+
 ---
 
 ## Modullar
@@ -83,6 +118,8 @@ backend/src/
   SmartERP.Application/     DTO-lar, servislər, interfeyslər, validator-lar
   SmartERP.Infrastructure/  EF Core, repozitoriyalar, JWT, Excel, OpenAI
   SmartERP.API/             Controller-lər, SignalR hub-lar, middleware
+backend/tests/
+  SmartERP.Tests/           xUnit testləri (SQLite in-memory üzərində)
 frontend/src/
   components/ui/            Dizayn sistemi (Button, StatCard, SlideOver, ...)
   pages/<modul>/            Modul səhifələri
