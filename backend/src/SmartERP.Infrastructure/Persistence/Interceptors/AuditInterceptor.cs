@@ -28,6 +28,13 @@ public class AuditInterceptor(ICurrentUserService currentUser) : SaveChangesInte
     private readonly List<(EntityEntry Entry, string Action, string? Changes)> _pending = [];
     private bool _writingAudit;
 
+    /// <summary>
+    /// Demo data seed zamanı log yazılışını dayandırır — minlərlə eyni vaxtlı
+    /// "system yaratdı" sətri log mərkəzini zibilləməsin. Audit sahələri
+    /// (CreatedDate/CreatedBy) yenə də doldurulur.
+    /// </summary>
+    public bool SuppressLogging { get; set; }
+
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -70,7 +77,7 @@ public class AuditInterceptor(ICurrentUserService currentUser) : SaveChangesInte
                 continue;
 
             var entityName = entry.Entity.GetType().Name;
-            var shouldLog = !IgnoredEntities.Contains(entityName);
+            var shouldLog = !SuppressLogging && !IgnoredEntities.Contains(entityName);
 
             switch (entry.State)
             {

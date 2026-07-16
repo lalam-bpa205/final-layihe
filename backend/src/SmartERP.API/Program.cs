@@ -125,6 +125,15 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await DataSeeder.SeedAsync(db, scope.ServiceProvider.GetRequiredService<IPasswordHasher>());
 
+    // Nümayiş datası — yalnız konfiqurasiyada aktivdirsə və baza hələ doldurulmayıbsa
+    if (builder.Configuration.GetValue("DemoData:Enabled", false))
+    {
+        await DemoDataSeeder.SeedAsync(
+            db,
+            scope.ServiceProvider.GetRequiredService<
+                SmartERP.Infrastructure.Persistence.Interceptors.AuditInterceptor>());
+    }
+
     // GPS izi olmayan avtomobillər üçün ilkin simulyasiya
     await scope.ServiceProvider
         .GetRequiredService<SmartERP.Application.Features.Transport.Gps.IVehicleGpsService>()
