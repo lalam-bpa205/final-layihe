@@ -23,6 +23,7 @@ import VehicleDetailPage from './pages/transport/VehicleDetailPage';
 import DriversPage from './pages/transport/DriversPage';
 import VehicleLogsPage from './pages/transport/VehicleLogsPage';
 import GpsTrackingPage from './pages/transport/GpsTrackingPage';
+import FuelTransferPage from './pages/transport/FuelTransferPage';
 import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
 import TransactionsPage from './pages/finance/TransactionsPage';
 import InvoicesPage from './pages/finance/InvoicesPage';
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/transport/vehicles/:id" element={<VehicleDetailPage />} />
           <Route path="/transport/gps" element={<GpsTrackingPage />} />
           <Route path="/transport/drivers" element={<DriversPage />} />
+          <Route path="/transport/fuel" element={<FuelTransferPage />} />
           <Route path="/transport/logs" element={<VehicleLogsPage />} />
           <Route path="/finance" element={<FinanceDashboardPage />} />
           <Route path="/finance/transactions" element={<TransactionsPage />} />

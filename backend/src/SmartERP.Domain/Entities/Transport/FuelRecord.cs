@@ -10,6 +10,10 @@ public class FuelRecord : BaseEntity
     public int? DriverId { get; set; }
     public Driver? Driver { get; set; }
 
+    /// <summary>Yanacağın hansı mənbədən köçürüldüyü.</summary>
+    public int? FuelSourceId { get; set; }
+    public FuelSource? FuelSource { get; set; }
+
     public DateOnly Date { get; set; }
     public decimal Liters { get; set; }
     public decimal Cost { get; set; }

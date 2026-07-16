@@ -91,6 +91,8 @@ public class FuelRecordDto
     public string VehiclePlate { get; set; } = null!;
     public int? DriverId { get; set; }
     public string? DriverName { get; set; }
+    public int? FuelSourceId { get; set; }
+    public string? FuelSourceName { get; set; }
     public DateOnly Date { get; set; }
     public decimal Liters { get; set; }
     public decimal Cost { get; set; }

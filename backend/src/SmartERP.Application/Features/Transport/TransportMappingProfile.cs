@@ -1,5 +1,6 @@
 using AutoMapper;
 using SmartERP.Application.Features.Transport.Dtos;
+using SmartERP.Application.Features.Transport.Fuel;
 using SmartERP.Domain.Entities.Transport;
 
 namespace SmartERP.Application.Features.Transport;
@@ -23,7 +24,10 @@ public class TransportMappingProfile : Profile
         CreateMap<FuelRecord, FuelRecordDto>()
             .ForMember(d => d.VehiclePlate, o => o.MapFrom(s => s.Vehicle.PlateNumber))
             .ForMember(d => d.DriverName, o => o.MapFrom(s =>
-                s.Driver != null ? s.Driver.Employee.FirstName + " " + s.Driver.Employee.LastName : null));
+                s.Driver != null ? s.Driver.Employee.FirstName + " " + s.Driver.Employee.LastName : null))
+            .ForMember(d => d.FuelSourceName, o => o.MapFrom(s => s.FuelSource != null ? s.FuelSource.Name : null));
+
+        CreateMap<FuelSource, FuelSourceDto>();
 
         CreateMap<MaintenanceRecord, MaintenanceRecordDto>()
             .ForMember(d => d.VehiclePlate, o => o.MapFrom(s => s.Vehicle.PlateNumber));

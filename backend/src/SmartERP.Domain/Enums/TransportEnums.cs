@@ -30,3 +30,12 @@ public enum DeliveryStatus
     Delivered = 3,
     Cancelled = 4
 }
+
+public enum FuelSourceType
+{
+    /// <summary>Şirkətin öz yanacaq anbarı — stoku izlənir, köçürmə zamanı azalır.</summary>
+    Depot = 1,
+
+    /// <summary>Xarici yanacaqdoldurma məntəqəsi — stoku izlənmir.</summary>
+    Station = 2
+}

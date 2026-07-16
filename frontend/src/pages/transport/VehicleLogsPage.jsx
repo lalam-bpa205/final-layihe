@@ -139,6 +139,7 @@ export default function VehicleLogsPage() {
                   <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Tarix</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Avtomobil</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Sürücü</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider">Mənbə</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider">Litr</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider">Məbləğ</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider">Odometr</th>
@@ -147,7 +148,7 @@ export default function VehicleLogsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                  <SkeletonRows rows={6} cols={7} />
+                  <SkeletonRows rows={6} cols={8} />
                 ) : (
                   fuel.map((f) => (
                     <tr key={f.id} className="transition-colors hover:bg-slate-50/60">
@@ -156,6 +157,7 @@ export default function VehicleLogsPage() {
                       </td>
                       <td className="px-6 py-3.5 font-mono text-xs text-slate-600">{f.vehiclePlate}</td>
                       <td className="px-6 py-3.5 text-slate-600">{f.driverName || '—'}</td>
+                      <td className="px-6 py-3.5 text-slate-600">{f.fuelSourceName || '—'}</td>
                       <td className="px-6 py-3.5 text-right tabular-nums text-slate-700">
                         {Number(f.liters ?? 0).toLocaleString('az-AZ')}
                       </td>

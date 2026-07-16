@@ -28,6 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Domain.Entities.Transport.Driver> Drivers => Set<Domain.Entities.Transport.Driver>();
     public DbSet<Domain.Entities.Transport.Delivery> Deliveries => Set<Domain.Entities.Transport.Delivery>();
     public DbSet<Domain.Entities.Transport.FuelRecord> FuelRecords => Set<Domain.Entities.Transport.FuelRecord>();
+    public DbSet<Domain.Entities.Transport.FuelSource> FuelSources => Set<Domain.Entities.Transport.FuelSource>();
     public DbSet<Domain.Entities.Transport.MaintenanceRecord> MaintenanceRecords => Set<Domain.Entities.Transport.MaintenanceRecord>();
     public DbSet<Domain.Entities.Transport.VehicleLocation> VehicleLocations => Set<Domain.Entities.Transport.VehicleLocation>();
 

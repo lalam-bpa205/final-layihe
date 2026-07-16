@@ -88,6 +88,27 @@ public class FuelRecordConfiguration : IEntityTypeConfiguration<FuelRecord>
             .WithMany()
             .HasForeignKey(f => f.DriverId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Mənbə silinsə köçürmə tarixçəsi qalsın
+        builder.HasOne(f => f.FuelSource)
+            .WithMany(s => s.FuelRecords)
+            .HasForeignKey(f => f.FuelSourceId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public class FuelSourceConfiguration : IEntityTypeConfiguration<FuelSource>
+{
+    public void Configure(EntityTypeBuilder<FuelSource> builder)
+    {
+        builder.ToTable("FuelSources");
+
+        builder.Property(s => s.Name).IsRequired().HasMaxLength(120);
+        builder.Property(s => s.Address).HasMaxLength(250);
+        builder.Property(s => s.CurrentLiters).HasPrecision(10, 2);
+        builder.Property(s => s.CapacityLiters).HasPrecision(10, 2);
+
+        builder.HasIndex(s => s.Name);
     }
 }
 

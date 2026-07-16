@@ -3,12 +3,14 @@ using SmartERP.Application.Common.Interfaces;
 using SmartERP.Domain.Constants;
 using SmartERP.Domain.Entities.Auth;
 using SmartERP.Domain.Entities.Hr;
+using SmartERP.Domain.Entities.Transport;
+using SmartERP.Domain.Enums;
 
 namespace SmartERP.Infrastructure.Persistence;
 
 /// <summary>
-/// İlk işə düşmə zamanı rolları, default SuperAdmin istifadəçisini və
-/// standart iş qrafiklərini yaradır.
+/// İlk işə düşmə zamanı rolları, default SuperAdmin istifadəçisini,
+/// standart iş qrafiklərini və yanacaq mənbələrini yaradır.
 /// </summary>
 public static class DataSeeder
 {
@@ -45,6 +47,36 @@ public static class DataSeeder
                     Name = "Tam həftə (B.e–Şənbə)",
                     Monday = true, Tuesday = true, Wednesday = true, Thursday = true, Friday = true, Saturday = true,
                     StartTime = new(10, 0), EndTime = new(19, 0)
+                });
+            await context.SaveChangesAsync();
+        }
+
+        // Standart yanacaq mənbələri (yalnız heç biri yoxdursa)
+        if (!await context.FuelSources.AnyAsync())
+        {
+            context.FuelSources.AddRange(
+                new FuelSource
+                {
+                    Name = "Mərkəzi anbar (Bakı)",
+                    Type = FuelSourceType.Depot,
+                    Address = "Bakı, Sabunçu qəs.",
+                    CapacityLiters = 20000,
+                    CurrentLiters = 12000
+                },
+                new FuelSource
+                {
+                    Name = "Filial anbarı (Gəncə)",
+                    Type = FuelSourceType.Depot,
+                    Address = "Gəncə, Nizami küç.",
+                    CapacityLiters = 8000,
+                    CurrentLiters = 4500
+                },
+                new FuelSource
+                {
+                    Name = "SOCAR Petrol — Bakı",
+                    Type = FuelSourceType.Station,
+                    Address = "Bakı, Heydər Əliyev pr.",
+                    CapacityLiters = 0
                 });
             await context.SaveChangesAsync();
         }
