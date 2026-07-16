@@ -19,6 +19,9 @@ public interface IStockService
     Task<StockMovementDto> StockInAsync(StockInRequest request, CancellationToken ct = default);
     Task<StockMovementDto> StockOutAsync(StockOutRequest request, CancellationToken ct = default);
     Task<List<StockMovementDto>> TransferAsync(StockTransferRequest request, CancellationToken ct = default);
+
+    /// <summary>Anbarlar arası köçürmə tarixçəsi — çıxış/giriş cütü tək sətir kimi.</summary>
+    Task<PagedResult<StockTransferDto>> GetTransfersAsync(StockTransferFilter filter, CancellationToken ct = default);
 }
 
 public class StockService(
@@ -109,7 +112,7 @@ public class StockService(
             var balance = await GetBalanceAsync(request.ProductId, request.WarehouseId, token);
             if (balance < request.Quantity)
                 throw new ConflictException(
-                    $"Kifayət qədər stok yoxdur. Mövcud: {balance}, tələb olunan: {request.Quantity}.");
+                    $"Kifayət qədər stok yoxdur. Mövcud: {balance:0.##}, tələb olunan: {request.Quantity:0.##}.");
 
             var newMovement = new StockMovement
             {
@@ -170,7 +173,7 @@ public class StockService(
             var balance = await GetBalanceAsync(request.ProductId, request.FromWarehouseId, token);
             if (balance < request.Quantity)
                 throw new ConflictException(
-                    $"Göndərən anbarda kifayət qədər stok yoxdur. Mövcud: {balance}.");
+                    $"Göndərən anbarda kifayət qədər stok yoxdur. Mövcud: {balance:0.##}, köçürülmək istənən: {request.Quantity:0.##}.");
 
             var outMovement = new StockMovement
             {
@@ -202,6 +205,52 @@ public class StockService(
             .Where(m => ids.Contains(m.Id))
             .ProjectTo<StockMovementDto>(mapper.ConfigurationProvider)
             .ToListAsync(ct);
+    }
+
+    public async Task<PagedResult<StockTransferDto>> GetTransfersAsync(StockTransferFilter filter, CancellationToken ct = default)
+    {
+        // Hər köçürmə iki sətirdir (TransferOut + TransferIn) — eyni TransferGroupId ilə.
+        // Çıxış sətrini əsas götürüb, cütünü giriş sətrindən tapırıq.
+        var query = unitOfWork.Repository<StockMovement>().Query()
+            .Where(m => m.TransferGroupId != null && m.Type == StockMovementType.TransferOut);
+
+        if (filter.ProductId is not null)
+            query = query.Where(m => m.ProductId == filter.ProductId);
+
+        // Anbar filtri: həm göndərən, həm qəbul edən tərəf sayılır
+        if (filter.WarehouseId is not null)
+            query = query.Where(m =>
+                m.WarehouseId == filter.WarehouseId ||
+                unitOfWork.Repository<StockMovement>().Query()
+                    .Any(x => x.TransferGroupId == m.TransferGroupId &&
+                              x.Type == StockMovementType.TransferIn &&
+                              x.WarehouseId == filter.WarehouseId));
+
+        var transfers = query
+            .OrderByDescending(m => m.Id)
+            .Select(m => new StockTransferDto
+            {
+                TransferGroupId = m.TransferGroupId!.Value,
+                ProductId = m.ProductId,
+                ProductName = m.Product.Name,
+                Unit = m.Product.Unit,
+                FromWarehouseId = m.WarehouseId,
+                FromWarehouseName = m.Warehouse.Name,
+                ToWarehouseId = unitOfWork.Repository<StockMovement>().Query()
+                    .Where(x => x.TransferGroupId == m.TransferGroupId &&
+                                x.Type == StockMovementType.TransferIn)
+                    .Select(x => x.WarehouseId).FirstOrDefault(),
+                ToWarehouseName = unitOfWork.Repository<StockMovement>().Query()
+                    .Where(x => x.TransferGroupId == m.TransferGroupId &&
+                                x.Type == StockMovementType.TransferIn)
+                    .Select(x => x.Warehouse.Name).FirstOrDefault()!,
+                Quantity = m.Quantity,
+                Note = m.Note,
+                CreatedDate = m.CreatedDate,
+                CreatedBy = m.CreatedBy
+            });
+
+        return await transfers.ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
     // ---------- Köməkçi metodlar ----------

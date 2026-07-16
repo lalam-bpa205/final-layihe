@@ -30,6 +30,12 @@ public class StockController(IStockService stockService) : ControllerBase
     public async Task<ActionResult<StockMovementDto>> StockOut(StockOutRequest request, CancellationToken ct) =>
         Ok(await stockService.StockOutAsync(request, ct));
 
+    /// <summary>Anbarlar arası köçürmə tarixçəsi (hardan → hara).</summary>
+    [HttpGet("transfers")]
+    public async Task<ActionResult<PagedResult<StockTransferDto>>> GetTransfers(
+        [FromQuery] StockTransferFilter filter, CancellationToken ct) =>
+        Ok(await stockService.GetTransfersAsync(filter, ct));
+
     [HttpPost("transfer")]
     public async Task<ActionResult<List<StockMovementDto>>> Transfer(StockTransferRequest request, CancellationToken ct) =>
         Ok(await stockService.TransferAsync(request, ct));

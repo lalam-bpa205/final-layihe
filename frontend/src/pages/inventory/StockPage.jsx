@@ -20,19 +20,102 @@ const PANEL_TITLES = {
   transfer: 'Anbarlar arası transfer',
 };
 
+// Anbarlar arası köçürmələr — hər sətir bir köçürmə (çıxış+giriş cütü birləşdirilib).
+function TransfersTab({ transfers, loading, page, setPage, onTransfer }) {
+  return (
+    <>
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/60 bg-white shadow-sm">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50/80 text-slate-500">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Tarix</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Məhsul</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Marşrut</th>
+              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider">Miqdar</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Qeyd</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Kim</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <SkeletonRows rows={6} cols={6} />
+            ) : (
+              transfers.items.map((t) => (
+                <tr key={t.transferGroupId} className="transition-colors hover:bg-indigo-50/40">
+                  <td className="whitespace-nowrap px-6 py-3.5 tabular-nums text-slate-500">
+                    {fmtDateTime(t.createdDate)}
+                  </td>
+                  <td className="px-6 py-3.5 font-medium text-slate-800">{t.productName}</td>
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="rounded-lg bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                        {t.fromWarehouseName}
+                      </span>
+                      <span className="text-slate-400" aria-hidden="true">→</span>
+                      <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                        {t.toWarehouseName}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5 text-right font-semibold tabular-nums text-slate-800">
+                    {t.quantity} {t.unit}
+                  </td>
+                  <td className="max-w-40 truncate px-6 py-3.5 text-slate-500">{t.note || '—'}</td>
+                  <td className="px-6 py-3.5 text-slate-500">{t.createdBy}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+        {!loading && transfers.items.length === 0 && (
+          <EmptyState
+            icon="⇄"
+            title="Anbarlar arası köçürmə yoxdur"
+            description="Məhsulu bir anbardan digərinə köçürdükdə əməliyyat burada görünəcək."
+            action={<Button onClick={onTransfer}>⇄ Transfer et</Button>}
+          />
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+        <span>Cəmi: {transfers.totalCount} köçürmə</span>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            ← Əvvəlki
+          </Button>
+          <span className="px-1 tabular-nums">
+            Səhifə {transfers.page} / {Math.max(transfers.totalPages, 1)}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={page >= transfers.totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            Növbəti →
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function StockPage() {
   const [tab, setTab] = useState('movements');
   const [movements, setMovements] = useState({ items: [], totalCount: 0, totalPages: 0, page: 1 });
   const [movementsLoading, setMovementsLoading] = useState(true);
   const [levels, setLevels] = useState([]);
   const [levelsLoading, setLevelsLoading] = useState(true);
+  const [transfers, setTransfers] = useState({ items: [], totalCount: 0, totalPages: 0, page: 1 });
+  const [transfersLoading, setTransfersLoading] = useState(true);
+  const [transferPage, setTransferPage] = useState(1);
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [panel, setPanel] = useState(null); // 'in' | 'out' | 'transfer'
   const [error, setError] = useState(null);
 
-  const { register, handleSubmit, reset, formState } = useForm();
+  const { register, handleSubmit, reset, watch, formState } = useForm();
 
   const loadMovements = useCallback(() => {
     setMovementsLoading(true);
@@ -52,10 +135,23 @@ export default function StockPage() {
       .finally(() => setLevelsLoading(false));
   }, []);
 
+  const loadTransfers = useCallback(() => {
+    setTransfersLoading(true);
+    api
+      .get('/stock/transfers', { params: { page: transferPage, pageSize: 10 } })
+      .then(({ data }) => setTransfers(data))
+      .catch(() => notify.error('Köçürmə tarixçəsi yüklənə bilmədi.'))
+      .finally(() => setTransfersLoading(false));
+  }, [transferPage]);
+
   useEffect(() => {
     loadMovements();
     loadLevels();
   }, [loadMovements, loadLevels]);
+
+  useEffect(() => {
+    loadTransfers();
+  }, [loadTransfers]);
 
   useEffect(() => {
     api.get('/products', { params: { pageSize: 100 } }).then(({ data }) => setProducts(data.items));
@@ -70,6 +166,22 @@ export default function StockPage() {
     setError(null);
     setPanel(type);
   };
+
+  // Transfer formunda göndərən anbardakı cari qalıq (qalıqlar siyahısından)
+  const selectedProductId = watch('productId');
+  const fromWarehouseId = watch('fromWarehouseId');
+  const transferQty = watch('quantity');
+
+  const fromLevel = levels.find(
+    (l) =>
+      String(l.productId) === String(selectedProductId) &&
+      String(l.warehouseId) === String(fromWarehouseId),
+  );
+  const fromBalance =
+    selectedProductId && fromWarehouseId ? (fromLevel?.quantity ?? 0) : null;
+  const fromUnit = fromLevel?.unit ?? '';
+  const exceedsBalance =
+    fromBalance !== null && transferQty !== '' && Number(transferQty) > fromBalance;
 
   const onSubmit = async (values) => {
     try {
@@ -103,6 +215,7 @@ export default function StockPage() {
       setPanel(null);
       loadMovements();
       loadLevels();
+      loadTransfers();
     } catch (err) {
       const data = err.response?.data;
       setError(
@@ -139,13 +252,24 @@ export default function StockPage() {
         className="mb-4"
         tabs={[
           { key: 'movements', label: 'Hərəkətlər', icon: '🕘', count: movements.totalCount },
+          { key: 'transfers', label: 'Anbarlar arası köçürmə', icon: '⇄', count: transfers.totalCount },
           { key: 'levels', label: 'Qalıqlar', icon: '📊', count: levels.length },
         ]}
         active={tab}
         onChange={setTab}
       />
 
-      {tab === 'movements' ? (
+      {tab === 'transfers' && (
+        <TransfersTab
+          transfers={transfers}
+          loading={transfersLoading}
+          page={transferPage}
+          setPage={setTransferPage}
+          onTransfer={() => openPanel('transfer')}
+        />
+      )}
+
+      {tab === 'movements' && (
         <>
           <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
@@ -222,7 +346,9 @@ export default function StockPage() {
             </div>
           </div>
         </>
-      ) : (
+      )}
+
+      {tab === 'levels' && (
         <div className="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50/80 text-slate-500">
@@ -281,20 +407,40 @@ export default function StockPage() {
           </Select>
 
           {panel === 'transfer' ? (
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Göndərən anbar" required {...register('fromWarehouseId', { required: true })}>
-                <option value="">Seçin...</option>
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
-                ))}
-              </Select>
-              <Select label="Qəbul edən anbar" required {...register('toWarehouseId', { required: true })}>
-                <option value="">Seçin...</option>
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
-                ))}
-              </Select>
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Göndərən anbar" required {...register('fromWarehouseId', { required: true })}>
+                  <option value="">Seçin...</option>
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </Select>
+                {/* Eyni anbara köçürmə mümkün deyil — göndərəni siyahıdan çıxarırıq */}
+                <Select label="Qəbul edən anbar" required {...register('toWarehouseId', { required: true })}>
+                  <option value="">Seçin...</option>
+                  {warehouses
+                    .filter((w) => String(w.id) !== String(fromWarehouseId))
+                    .map((w) => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                </Select>
+              </div>
+
+              {/* Göndərən anbardakı qalıq — istifadəçi stokdan çox köçürməsin */}
+              {fromBalance !== null && (
+                <div
+                  className={`rounded-xl border px-4 py-2.5 text-sm ${
+                    exceedsBalance
+                      ? 'border-red-200 bg-red-50 text-red-700'
+                      : 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                  }`}
+                >
+                  Göndərən anbarda mövcud qalıq:{' '}
+                  <b className="tabular-nums">{fromBalance} {fromUnit}</b>
+                  {exceedsBalance && ' — köçürmək istədiyiniz miqdar qalıqdan çoxdur.'}
+                </div>
+              )}
+            </>
           ) : (
             <Select label="Anbar" required {...register('warehouseId', { required: true })}>
               <option value="">Seçin...</option>

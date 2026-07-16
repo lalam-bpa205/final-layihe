@@ -97,6 +97,32 @@ public record StockMovementFilter(
     int? WarehouseId = null,
     StockMovementType? Type = null);
 
+/// <summary>
+/// Anbarlar arası bir köçürmə — TransferGroupId ilə bağlı çıxış/giriş cütü
+/// tək sətir kimi birləşdirilir ("hardan → hara").
+/// </summary>
+public class StockTransferDto
+{
+    public Guid TransferGroupId { get; set; }
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = null!;
+    public string Unit { get; set; } = null!;
+    public int FromWarehouseId { get; set; }
+    public string FromWarehouseName { get; set; } = null!;
+    public int ToWarehouseId { get; set; }
+    public string ToWarehouseName { get; set; } = null!;
+    public decimal Quantity { get; set; }
+    public string? Note { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public string? CreatedBy { get; set; }
+}
+
+public record StockTransferFilter(
+    int Page = 1,
+    int PageSize = 10,
+    int? ProductId = null,
+    int? WarehouseId = null);
+
 // ---------- Analitika: modul icmalı ----------
 public class InventorySummaryDto
 {
