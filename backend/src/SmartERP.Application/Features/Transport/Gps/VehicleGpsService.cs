@@ -10,14 +10,17 @@ public interface IVehicleGpsService
     Task<List<VehicleLiveLocationDto>> GetLatestAsync(CancellationToken ct = default);
     Task<VehicleTrackDto> GetTrackAsync(int vehicleId, CancellationToken ct = default);
     Task<VehicleTrackDto> SimulateAsync(int vehicleId, CancellationToken ct = default);
+
+    /// <summary>Konkret çatdırılma zamanı qeydə alınmış GPS izi.</summary>
+    Task<VehicleTrackDto> GetDeliveryTrackAsync(int deliveryId, CancellationToken ct = default);
+
     /// <summary>GPS izi olmayan bütün avtomobillər üçün ilkin track yaradır (startup seed).</summary>
     Task SeedMissingAsync(CancellationToken ct = default);
 }
 
 public class VehicleGpsService(IUnitOfWork unitOfWork) : IVehicleGpsService
 {
-    // Hər track üçün təxmini nöqtə sayı və vaxt addımı
-    private const int PointsPerSegment = 12;
+    // "Cari iz" simulyasiyasının vaxt addımı
     private static readonly TimeSpan StepInterval = TimeSpan.FromMinutes(3);
 
     public async Task<List<VehicleLiveLocationDto>> GetLatestAsync(CancellationToken ct = default)
@@ -26,9 +29,11 @@ public class VehicleGpsService(IUnitOfWork unitOfWork) : IVehicleGpsService
             .Select(v => new { v.Id, v.PlateNumber, v.Brand, v.Model, v.Status })
             .ToListAsync(ct);
 
+        // Vaxta görə sıralanır — bir avtomobilin bir neçə reys izi var və
+        // hər izin Sequence-i 0-dan başlayır, ona görə Sequence burada yaramır
         var locations = await unitOfWork.Repository<VehicleLocation>().Query()
-            .OrderBy(l => l.VehicleId).ThenBy(l => l.Sequence)
-            .Select(l => new { l.VehicleId, l.Latitude, l.Longitude, l.SpeedKmh, l.RecordedAtUtc })
+            .OrderBy(l => l.VehicleId).ThenBy(l => l.RecordedAtUtc)
+            .Select(l => new { l.VehicleId, l.DeliveryId, l.Latitude, l.Longitude, l.SpeedKmh, l.RecordedAtUtc })
             .ToListAsync(ct);
 
         var byVehicle = locations.GroupBy(l => l.VehicleId).ToDictionary(g => g.Key, g => g.ToList());
@@ -40,9 +45,13 @@ public class VehicleGpsService(IUnitOfWork unitOfWork) : IVehicleGpsService
                 continue;
 
             var last = pts[^1];
-            double totalKm = 0;
-            for (var i = 1; i < pts.Count; i++)
-                totalKm += GeoMath.DistanceKm(pts[i - 1].Latitude, pts[i - 1].Longitude, pts[i].Latitude, pts[i].Longitude);
+
+            // Məsafə hər iz (reys) daxilində hesablanıb toplanır — reyslər
+            // arasındakı sıçrayış qət edilmiş məsafə sayılmamalıdır
+            var totalKm = pts
+                .GroupBy(p => p.DeliveryId)
+                .Sum(g => GeoMath.TrackDistanceKm(
+                    [.. g.OrderBy(p => p.RecordedAtUtc).Select(p => (p.Latitude, p.Longitude))]));
 
             result.Add(new VehicleLiveLocationDto
             {
@@ -61,15 +70,27 @@ public class VehicleGpsService(IUnitOfWork unitOfWork) : IVehicleGpsService
         return result;
     }
 
+    /// <summary>
+    /// Avtomobilin SONUNCU izi — reysdən-reysə ayrı izlər olduğu üçün hamısını
+    /// birlikdə çəksək xəritədə reyslər arası "sıçrayış" xətləri görünərdi.
+    /// Bütün reyslər üzrə ümumi məsafə <see cref="GetLatestAsync"/>-dədir.
+    /// </summary>
     public async Task<VehicleTrackDto> GetTrackAsync(int vehicleId, CancellationToken ct = default)
     {
         var vehicle = await unitOfWork.Repository<Vehicle>()
             .FirstOrDefaultAsync(v => v.Id == vehicleId, ct)
             ?? throw new NotFoundException("Avtomobil", vehicleId);
 
-        var points = await unitOfWork.Repository<VehicleLocation>().Query()
+        var all = await unitOfWork.Repository<VehicleLocation>().Query()
             .Where(l => l.VehicleId == vehicleId)
-            .OrderBy(l => l.Sequence)
+            .Select(l => new { l.DeliveryId, l.Latitude, l.Longitude, l.SpeedKmh, l.RecordedAtUtc })
+            .ToListAsync(ct);
+
+        var points = all
+            .GroupBy(l => l.DeliveryId)
+            .OrderByDescending(g => g.Max(x => x.RecordedAtUtc))
+            .FirstOrDefault()
+            ?.OrderBy(x => x.RecordedAtUtc)
             .Select(l => new GpsPointDto
             {
                 Latitude = l.Latitude,
@@ -77,24 +98,9 @@ public class VehicleGpsService(IUnitOfWork unitOfWork) : IVehicleGpsService
                 SpeedKmh = Math.Round(l.SpeedKmh, 1),
                 RecordedAtUtc = l.RecordedAtUtc
             })
-            .ToListAsync(ct);
+            .ToList() ?? [];
 
-        double totalKm = 0;
-        for (var i = 1; i < points.Count; i++)
-            totalKm += GeoMath.DistanceKm(points[i - 1].Latitude, points[i - 1].Longitude, points[i].Latitude, points[i].Longitude);
-
-        return new VehicleTrackDto
-        {
-            VehicleId = vehicleId,
-            PlateNumber = vehicle.PlateNumber,
-            Points = points,
-            PointCount = points.Count,
-            TotalDistanceKm = Math.Round(totalKm, 1),
-            AverageSpeedKmh = points.Count > 0 ? Math.Round(points.Average(p => p.SpeedKmh), 1) : 0,
-            MaxSpeedKmh = points.Count > 0 ? Math.Round(points.Max(p => p.SpeedKmh), 1) : 0,
-            StartedAtUtc = points.Count > 0 ? points[0].RecordedAtUtc : null,
-            EndedAtUtc = points.Count > 0 ? points[^1].RecordedAtUtc : null
-        };
+        return BuildTrack(vehicleId, vehicle.PlateNumber, points);
     }
 
     public async Task<VehicleTrackDto> SimulateAsync(int vehicleId, CancellationToken ct = default)
@@ -106,19 +112,27 @@ public class VehicleGpsService(IUnitOfWork unitOfWork) : IVehicleGpsService
         await unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var repo = unitOfWork.Repository<VehicleLocation>();
-            var existing = await repo.ListAsync(l => l.VehicleId == vehicleId, token);
+
+            // YALNIZ reysə bağlı olmayan "cari iz" silinir — çatdırılmaların
+            // tarixi izləri toxunulmaz qalır
+            var existing = await repo.ListAsync(
+                l => l.VehicleId == vehicleId && l.DeliveryId == null, token);
             foreach (var loc in existing)
                 repo.Remove(loc);
 
             // Vehicle id-si seed kimi işlədilir — hər avtomobil sabit marşrut alır, sürətlər random
             var route = GpsRoutes.All[vehicleId % GpsRoutes.All.Length];
             var rnd = new Random(vehicleId * 7919 + Environment.TickCount);
-            var points = GenerateTrack(route, rnd);
+
+            var end = DateTime.UtcNow;
+            var start = end - StepInterval * (GpsTrackGenerator.PointCount(route) - 1);
+            var points = GpsTrackGenerator.Generate(route, rnd, start, end);
 
             for (var i = 0; i < points.Count; i++)
                 await repo.AddAsync(new VehicleLocation
                 {
                     VehicleId = vehicleId,
+                    DeliveryId = null,
                     Latitude = points[i].Lat,
                     Longitude = points[i].Lng,
                     SpeedKmh = points[i].Speed,
@@ -140,35 +154,49 @@ public class VehicleGpsService(IUnitOfWork unitOfWork) : IVehicleGpsService
             await SimulateAsync(id, ct);
     }
 
-    // ---------- Track generatoru ----------
-
-    private static List<(double Lat, double Lng, double Speed, DateTime At)> GenerateTrack(GpsRoute route, Random rnd)
+    public async Task<VehicleTrackDto> GetDeliveryTrackAsync(int deliveryId, CancellationToken ct = default)
     {
-        var points = new List<(double Lat, double Lng, double Speed, DateTime At)>();
+        var delivery = await unitOfWork.Repository<Delivery>().Query()
+            .Where(d => d.Id == deliveryId)
+            .Select(d => new { d.Id, d.VehicleId, Plate = d.Vehicle.PlateNumber })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Çatdırılma", deliveryId);
 
-        // Track keçmişdə başlayıb indiyə qədər davam edir
-        var totalPoints = (route.Waypoints.Length - 1) * PointsPerSegment + 1;
-        var at = DateTime.UtcNow - StepInterval * (totalPoints - 1);
-
-        for (var seg = 0; seg < route.Waypoints.Length - 1; seg++)
-        {
-            var a = route.Waypoints[seg];
-            var b = route.Waypoints[seg + 1];
-            var stepsThisSeg = seg == route.Waypoints.Length - 2 ? PointsPerSegment + 1 : PointsPerSegment;
-
-            for (var s = 0; s < stepsThisSeg; s++)
+        var points = await unitOfWork.Repository<VehicleLocation>().Query()
+            .Where(l => l.DeliveryId == deliveryId)
+            .OrderBy(l => l.Sequence)
+            .Select(l => new GpsPointDto
             {
-                var t = (double)s / PointsPerSegment;
-                // Xətti interpolyasiya + kiçik təsadüfi sapma (real yol kimi görünsün)
-                var jitter = 0.008;
-                var lat = a.Lat + (b.Lat - a.Lat) * t + (rnd.NextDouble() - 0.5) * jitter;
-                var lng = a.Lng + (b.Lng - a.Lng) * t + (rnd.NextDouble() - 0.5) * jitter;
-                var speed = 45 + rnd.NextDouble() * 65; // 45–110 km/saat
+                Latitude = l.Latitude,
+                Longitude = l.Longitude,
+                SpeedKmh = Math.Round(l.SpeedKmh, 1),
+                RecordedAtUtc = l.RecordedAtUtc
+            })
+            .ToListAsync(ct);
 
-                points.Add((Math.Round(lat, 6), Math.Round(lng, 6), Math.Round(speed, 1), at));
-                at += StepInterval;
-            }
-        }
-        return points;
+        return BuildTrack(delivery.VehicleId, delivery.Plate, points);
+    }
+
+    /// <summary>Nöqtə siyahısından məsafə/sürət xülasəsi qurur.</summary>
+    private static VehicleTrackDto BuildTrack(int vehicleId, string plate, List<GpsPointDto> points)
+    {
+        double totalKm = 0;
+        for (var i = 1; i < points.Count; i++)
+            totalKm += GeoMath.DistanceKm(
+                points[i - 1].Latitude, points[i - 1].Longitude,
+                points[i].Latitude, points[i].Longitude);
+
+        return new VehicleTrackDto
+        {
+            VehicleId = vehicleId,
+            PlateNumber = plate,
+            Points = points,
+            PointCount = points.Count,
+            TotalDistanceKm = Math.Round(totalKm, 1),
+            AverageSpeedKmh = points.Count > 0 ? Math.Round(points.Average(p => p.SpeedKmh), 1) : 0,
+            MaxSpeedKmh = points.Count > 0 ? Math.Round(points.Max(p => p.SpeedKmh), 1) : 0,
+            StartedAtUtc = points.Count > 0 ? points[0].RecordedAtUtc : null,
+            EndedAtUtc = points.Count > 0 ? points[^1].RecordedAtUtc : null
+        };
     }
 }

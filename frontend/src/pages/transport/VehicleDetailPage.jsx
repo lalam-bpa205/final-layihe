@@ -22,6 +22,7 @@ import {
   fmtDate,
   fmtMonth,
 } from './transportShared';
+import VehicleRouteMap from './VehicleRouteMap';
 
 // dataviz palitrası (light surface üçün validasiya olunmuş)
 const FUEL_BLUE = '#2a78d6';
@@ -241,6 +242,11 @@ export default function VehicleDetailPage() {
           tone="slate"
         />
       </div>
+
+      {/* GPS izi — qət etdiyi marşrut və məsafə */}
+      <Card title="GPS izi" icon="🛰️" className="mb-4">
+        <VehicleRouteMap vehicleId={v.id} vehicleStatus={v.status} height={360} />
+      </Card>
 
       {/* Xərclər qrafiki */}
       <Card title="Xərclər (son 6 ay)" icon="📊" className="mb-4">

@@ -244,25 +244,23 @@ public class FuelService(
         };
     }
 
-    /// <summary>GPS nöqtələri arasındakı Haversine məsafələrinin cəmi — avtomobil üzrə.</summary>
+    /// <summary>
+    /// Avtomobil üzrə qət edilmiş ümumi məsafə — hər reysin izi ayrıca hesablanıb
+    /// toplanır. Bütün nöqtələri bir iz kimi saysaq, reyslər arasındakı sıçrayış
+    /// (məs. Gəncədə bitib növbəti dəfə Bakıdan başlaması) məsafəni şişirdərdi.
+    /// </summary>
     private async Task<Dictionary<int, double>> GetDistanceByVehicleAsync(CancellationToken ct)
     {
         var points = await unitOfWork.Repository<VehicleLocation>().Query()
-            .OrderBy(l => l.VehicleId).ThenBy(l => l.Sequence)
-            .Select(l => new { l.VehicleId, l.Latitude, l.Longitude })
+            .Select(l => new { l.VehicleId, l.DeliveryId, l.Latitude, l.Longitude, l.RecordedAtUtc })
             .ToListAsync(ct);
 
         return points
             .GroupBy(p => p.VehicleId)
-            .ToDictionary(g => g.Key, g =>
-            {
-                var list = g.ToList();
-                double km = 0;
-                for (var i = 1; i < list.Count; i++)
-                    km += GeoMath.DistanceKm(
-                        list[i - 1].Latitude, list[i - 1].Longitude,
-                        list[i].Latitude, list[i].Longitude);
-                return km;
-            });
+            .ToDictionary(
+                g => g.Key,
+                g => g.GroupBy(p => p.DeliveryId)
+                      .Sum(track => GeoMath.TrackDistanceKm(
+                          [.. track.OrderBy(p => p.RecordedAtUtc).Select(p => (p.Latitude, p.Longitude))])));
     }
 }

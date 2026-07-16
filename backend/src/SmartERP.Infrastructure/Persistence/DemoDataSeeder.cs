@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SmartERP.Application.Features.Transport.Gps;
 using SmartERP.Domain.Entities.Finance;
 using SmartERP.Domain.Entities.Hr;
 using SmartERP.Domain.Entities.Inventory;
@@ -60,6 +61,7 @@ public static class DemoDataSeeder
             var monthlyPayroll = employees.Where(e => e.Status == EmployeeStatus.Active).Sum(e => e.Salary);
             await SeedFinanceAsync(context, finCategories, invoices, salesOrders, monthlyPayroll, monthStart, today);
             await SeedDeliveriesAsync(context, salesOrders, employees, monthStart, today);
+            await SeedFuelAsync(context); // GPS izlərindən sonra — məsafəyə əsaslanır
             await SeedHrActivityAsync(context, employees, today);
         }
         finally
@@ -916,16 +918,16 @@ public static class DemoDataSeeder
         var customers = await context.Customers.ToDictionaryAsync(c => c.Id, c => c.Name);
         var seq = await NextSequenceAsync(context.Deliveries.Select(d => d.Number), "DLV-");
 
+        // Təyinatlar GPS marşrutları ilə üst-üstə düşür — beləliklə hər çatdırılma
+        // öz ünvanına uyğun REAL marşrut üzrə iz ala bilir
         var destinations = new (string City, string Address)[]
         {
             ("Sumqayıt", "Sumqayıt, 18-ci məhəllə"),
-            ("Gəncə", "Gəncə, Nizami küç. 45"),
-            ("Şirvan", "Şirvan, Heydər Əliyev pr. 12"),
+            ("Şamaxı", "Şamaxı, Heydər Əliyev pr. 12"),
+            ("Şirvan", "Şirvan, Sahil küç. 23"),
             ("Quba", "Quba, Ardıc küç. 8"),
-            ("Mingəçevir", "Mingəçevir, Sahil küç. 23"),
-            ("Bakı", "Bakı, Xətai r., Babək pr. 88"),
-            ("Lənkəran", "Lənkəran, Mərkəzi küç. 5"),
-            ("Şəki", "Şəki, M.Ə.Rəsulzadə küç. 31"),
+            ("Mingəçevir", "Mingəçevir, Nizami küç. 45"),
+            ("Gəncə", "Gəncə, Cavadxan küç. 31"),
         };
 
         var deliveries = new List<Delivery>();
@@ -969,6 +971,127 @@ public static class DemoDataSeeder
         }
 
         context.Deliveries.AddRange(deliveries);
+        await context.SaveChangesAsync();
+
+        await SeedDeliveryGpsTracksAsync(context, deliveries);
+    }
+
+    /// <summary>
+    /// Yola düşmüş hər çatdırılma üçün öz GPS izini yaradır — ünvanına uyğun
+    /// marşrut boyunca, reysin öz vaxt aralığında. Beləliklə çatdırılma detalında
+    /// "avtomobilin son izi" deyil, MƏHZ HƏMİN REYSİN marşrutu görünür.
+    /// </summary>
+    private static async Task SeedDeliveryGpsTracksAsync(AppDbContext context, List<Delivery> deliveries)
+    {
+        var locations = new List<VehicleLocation>();
+
+        foreach (var delivery in deliveries)
+        {
+            // Yola düşməyibsə (Planlaşdırılıb/Ləğv olunub) GPS izi də yoxdur
+            if (delivery.StartedAtUtc is null) continue;
+
+            var route = GpsRoutes.ForAddress(delivery.ToAddress);
+            if (route is null) continue;
+
+            // Çatdırılıbsa iz bitmə vaxtına qədər, yoldadırsa indiyə qədər
+            var start = delivery.StartedAtUtc.Value;
+            var end = delivery.DeliveredAtUtc ?? DateTime.UtcNow;
+            if (end <= start) end = start.AddHours(4);
+
+            var rnd = new Random(delivery.Id * 31 + 7);
+            var points = GpsTrackGenerator.Generate(route, rnd, start, end);
+
+            for (var i = 0; i < points.Count; i++)
+                locations.Add(new VehicleLocation
+                {
+                    VehicleId = delivery.VehicleId,
+                    DeliveryId = delivery.Id,
+                    Latitude = points[i].Lat,
+                    Longitude = points[i].Lng,
+                    SpeedKmh = points[i].Speed,
+                    Sequence = i,
+                    RecordedAtUtc = points[i].At
+                });
+        }
+
+        context.VehicleLocations.AddRange(locations);
+        await context.SaveChangesAsync();
+    }
+
+    // ---------- Yanacaq ----------
+
+    /// <summary>
+    /// Yanacaq köçürmələrini GPS məsafəsinə görə yaradır — hər avtomobil ayda
+    /// qət etdiyi qədər yanacaq alır. Sərfiyyat göstəricisi (L/100km) beləliklə
+    /// avtomobilin sinfinə uyğun real rəqəm verir.
+    ///
+    /// QEYD: anbar qalığı azaldılmır — seed olunmuş qalıq CARİ vəziyyətdir,
+    /// 12 aylıq tarixi köçürmələrin qarşılığında tarixi mədaxillər də olub
+    /// (onlar ayrıca modelləşdirilmir).
+    /// </summary>
+    private static async Task SeedFuelAsync(AppDbContext context)
+    {
+        if (await context.FuelRecords.AnyAsync()) return;
+
+        var sources = await context.FuelSources.ToListAsync();
+        if (sources.Count == 0) return;
+
+        var vehicles = await context.Vehicles.ToListAsync();
+        var driverIds = await context.Drivers.Select(d => d.Id).ToListAsync();
+
+        var points = await context.VehicleLocations
+            .Select(l => new { l.VehicleId, l.DeliveryId, l.Latitude, l.Longitude, l.RecordedAtUtc })
+            .ToListAsync();
+
+        const decimal pricePerLiter = 1.30m;
+        var records = new List<FuelRecord>();
+
+        foreach (var vehicle in vehicles)
+        {
+            // Yük maşını ~30–35 L/100km, furqon/minik ~9–12 L/100km
+            var rate = vehicle.Type is VehicleType.Truck or VehicleType.Trailer
+                ? 30 + Rnd.NextDouble() * 5
+                : 9 + Rnd.NextDouble() * 3;
+
+            var byMonth = points
+                .Where(p => p.VehicleId == vehicle.Id)
+                .GroupBy(p => (p.RecordedAtUtc.Year, p.RecordedAtUtc.Month));
+
+            foreach (var month in byMonth)
+            {
+                // Ay ərzində qət edilən məsafə — hər reys ayrıca hesablanır
+                var km = month
+                    .GroupBy(p => p.DeliveryId)
+                    .Sum(track => GeoMath.TrackDistanceKm(
+                        [.. track.OrderBy(p => p.RecordedAtUtc).Select(p => (p.Latitude, p.Longitude))]));
+
+                if (km < 5) continue;
+
+                var totalLiters = (decimal)(km * rate / 100);
+                var fills = totalLiters > 120 ? 2 : 1; // böyük həcm bir neçə doldurmaya bölünür
+
+                for (var i = 0; i < fills; i++)
+                {
+                    var liters = Math.Round(totalLiters / fills, 2);
+                    var daysInMonth = DateTime.DaysInMonth(month.Key.Year, month.Key.Month);
+                    var source = RandomOf(sources.Where(s => s.IsActive).ToList());
+
+                    records.Add(new FuelRecord
+                    {
+                        VehicleId = vehicle.Id,
+                        DriverId = driverIds.Count > 0 ? RandomOf(driverIds) : null,
+                        FuelSourceId = source.Id,
+                        Date = new DateOnly(month.Key.Year, month.Key.Month, Rnd.Next(1, daysInMonth + 1)),
+                        Liters = liters,
+                        Cost = Math.Round(liters * pricePerLiter, 2),
+                        OdometerKm = null,
+                        Note = $"{vehicle.PlateNumber} — növbəti reyslər üçün"
+                    });
+                }
+            }
+        }
+
+        context.FuelRecords.AddRange(records);
         await context.SaveChangesAsync();
     }
 

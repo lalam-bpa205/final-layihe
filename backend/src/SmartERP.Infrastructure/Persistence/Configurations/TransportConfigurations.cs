@@ -139,9 +139,17 @@ public class VehicleLocationConfiguration : IEntityTypeConfiguration<VehicleLoca
         // Track sorğuları (avtomobil üzrə, sıra ilə) sürətli olsun
         builder.HasIndex(l => new { l.VehicleId, l.Sequence });
 
+        // Çatdırılmanın öz izini çəkmək üçün
+        builder.HasIndex(l => new { l.DeliveryId, l.Sequence });
+
         builder.HasOne(l => l.Vehicle)
             .WithMany()
             .HasForeignKey(l => l.VehicleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(l => l.Delivery)
+            .WithMany()
+            .HasForeignKey(l => l.DeliveryId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

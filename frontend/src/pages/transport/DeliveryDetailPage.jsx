@@ -10,6 +10,7 @@ import {
   fmtDate,
   fmtDateTime,
 } from './transportShared';
+import VehicleRouteMap from './VehicleRouteMap';
 
 // Şaquli status timeline addımı.
 function TimelineStep({ icon, title, date, done, tone = 'indigo', last = false, lineActive = false }) {
@@ -247,6 +248,26 @@ export default function DeliveryDetailPage() {
             )}
           </ol>
         </Card>
+
+        {/* Bu reysin öz GPS izi — yola düşməyibsə iz də yoxdur */}
+        {started && (
+          <Card
+            title="Bu reysin GPS izi"
+            icon="🛰️"
+            className="xl:col-span-2 xl:order-3"
+            action={
+              <span className="font-mono text-[11px] font-medium text-slate-400">
+                {d.vehiclePlate}
+              </span>
+            }
+          >
+            <VehicleRouteMap
+              deliveryId={d.id}
+              vehicleStatus={delivered ? 1 : 2}
+              emptyText="Bu reys üçün GPS izi qeydə alınmayıb."
+            />
+          </Card>
+        )}
 
         {/* Yan panel */}
         <div className="space-y-4">

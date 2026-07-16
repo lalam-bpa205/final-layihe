@@ -19,6 +19,11 @@ public class VehicleGpsController(IVehicleGpsService gpsService) : ControllerBas
     public async Task<ActionResult<VehicleTrackDto>> GetTrack(int vehicleId, CancellationToken ct) =>
         Ok(await gpsService.GetTrackAsync(vehicleId, ct));
 
+    /// <summary>Konkret çatdırılma zamanı qeydə alınmış GPS izi.</summary>
+    [HttpGet("deliveries/{deliveryId:int}/track")]
+    public async Task<ActionResult<VehicleTrackDto>> GetDeliveryTrack(int deliveryId, CancellationToken ct) =>
+        Ok(await gpsService.GetDeliveryTrackAsync(deliveryId, ct));
+
     /// <summary>Avtomobil üçün yeni GPS izi generate edir (GPS simulyatoru).</summary>
     [HttpPost("vehicles/{vehicleId:int}/simulate")]
     public async Task<ActionResult<VehicleTrackDto>> Simulate(int vehicleId, CancellationToken ct) =>

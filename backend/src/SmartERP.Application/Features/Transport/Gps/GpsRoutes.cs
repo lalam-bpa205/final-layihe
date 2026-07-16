@@ -1,7 +1,11 @@
 namespace SmartERP.Application.Features.Transport.Gps;
 
 /// <summary>Bir marşrut: ad + ardıcıl coğrafi keçid nöqtələri (waypoint-lər).</summary>
-public record GpsRoute(string Name, (double Lat, double Lng)[] Waypoints);
+public record GpsRoute(string Name, (double Lat, double Lng)[] Waypoints)
+{
+    /// <summary>Marşrutun son məntəqəsi — "Bakı → Gəncə" üçün "Gəncə".</summary>
+    public string Destination => Name.Split('→')[^1].Trim();
+}
 
 /// <summary>
 /// Azərbaycan şəhərləri arası real marşrutlar — GPS simulyatoru üçün baza.
@@ -18,6 +22,18 @@ public static class GpsRoutes
         new("Bakı → Mingəçevir", [(40.3777, 49.8920), (40.6000, 48.8000), (40.7200, 47.9000), (40.7700, 47.0489)]),
         new("Bakı → Gəncə", [(40.3777, 49.8920), (40.6000, 48.5000), (40.6800, 47.5000), (40.6828, 46.3606)]),
     ];
+
+    /// <summary>Marşrutların təyinat şəhərləri.</summary>
+    public static readonly string[] Destinations = [.. All.Select(r => r.Destination)];
+
+    /// <summary>
+    /// Ünvana uyğun marşrutu tapır — çatdırılmanın təyinat şəhərinə görə.
+    /// Tapılmasa null qaytarır.
+    /// </summary>
+    public static GpsRoute? ForAddress(string? address) =>
+        string.IsNullOrWhiteSpace(address)
+            ? null
+            : All.FirstOrDefault(r => address.Contains(r.Destination, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Azərbaycanın təxmini mərkəzi — xəritənin başlanğıc fokusu üçün.</summary>
     public const double CenterLat = 40.5;
