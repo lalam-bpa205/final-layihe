@@ -24,7 +24,11 @@ public static class DependencyInjection
             var connectionString = configuration.GetConnectionString("Default")
                 ?? throw new InvalidOperationException("'Default' connection string tapılmadı.");
 
-            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
+                       // Bir neçə kolleksiya yükləyən sorğular ayrı-ayrı SQL kimi icra olunsun —
+                       // tək sorğuda JOIN kartezian partlayışına və şişmiş nəticəyə səbəb olurdu.
+                       // Səhifələnən sorğular OrderBy işlətdiyi üçün split nəticələr determinstikdir.
+                       mySql => mySql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
                    .AddInterceptors(sp.GetRequiredService<AuditInterceptor>());
         });
 
