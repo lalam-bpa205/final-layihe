@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -39,7 +39,7 @@ public class FuelService(
     {
         var sources = await unitOfWork.Repository<FuelSource>().Query()
             .OrderBy(s => s.Type).ThenBy(s => s.Name)
-            .ProjectTo<FuelSourceDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FuelSourceDto>()
             .ToListAsync(ct);
 
         // Hər mənbədən köçürülmüş ümumi həcm
@@ -177,7 +177,7 @@ public class FuelService(
 
         return await unitOfWork.Repository<FuelRecord>().Query()
             .Where(f => f.Id == recordId)
-            .ProjectTo<FuelRecordDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FuelRecordDto>()
             .FirstAsync(ct);
     }
 

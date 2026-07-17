@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -26,13 +26,13 @@ public class DepartmentService(
     public async Task<List<DepartmentDto>> GetAllAsync(CancellationToken ct = default) =>
         await unitOfWork.Repository<Department>().Query()
             .OrderBy(d => d.Name)
-            .ProjectTo<DepartmentDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DepartmentDto>()
             .ToListAsync(ct);
 
     public async Task<DepartmentDto> GetByIdAsync(int id, CancellationToken ct = default) =>
         await unitOfWork.Repository<Department>().Query()
             .Where(d => d.Id == id)
-            .ProjectTo<DepartmentDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DepartmentDto>()
             .FirstOrDefaultAsync(ct)
         ?? throw new NotFoundException("Şöbə", id);
 

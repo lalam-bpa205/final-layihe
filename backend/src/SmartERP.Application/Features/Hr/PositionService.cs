@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -30,7 +30,7 @@ public class PositionService(
 
         return await query
             .OrderBy(p => p.Department.Name).ThenBy(p => p.Title)
-            .ProjectTo<PositionDto>(mapper.ConfigurationProvider)
+            .ProjectToType<PositionDto>()
             .ToListAsync(ct);
     }
 
@@ -95,6 +95,6 @@ public class PositionService(
     private async Task<PositionDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<Position>().Query()
             .Where(p => p.Id == id)
-            .ProjectTo<PositionDto>(mapper.ConfigurationProvider)
+            .ProjectToType<PositionDto>()
             .FirstAsync(ct);
 }

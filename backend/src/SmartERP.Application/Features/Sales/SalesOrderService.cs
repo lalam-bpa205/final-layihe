@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -42,14 +42,14 @@ public class SalesOrderService(
 
         return await query
             .OrderByDescending(o => o.Id)
-            .ProjectTo<SalesOrderDto>(mapper.ConfigurationProvider)
+            .ProjectToType<SalesOrderDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
     public async Task<SalesOrderDto> GetByIdAsync(int id, CancellationToken ct = default) =>
         await unitOfWork.Repository<SalesOrder>().Query()
             .Where(o => o.Id == id)
-            .ProjectTo<SalesOrderDto>(mapper.ConfigurationProvider)
+            .ProjectToType<SalesOrderDto>()
             .FirstOrDefaultAsync(ct)
         ?? throw new NotFoundException("Satış sifarişi", id);
 

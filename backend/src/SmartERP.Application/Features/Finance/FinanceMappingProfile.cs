@@ -1,28 +1,28 @@
-using AutoMapper;
+using Mapster;
 using SmartERP.Application.Features.Finance.Dtos;
 using SmartERP.Domain.Entities.Finance;
 
 namespace SmartERP.Application.Features.Finance;
 
-public class FinanceMappingProfile : Profile
+public class FinanceMappingRegister : IRegister
 {
-    public FinanceMappingProfile()
+    public void Register(TypeAdapterConfig config)
     {
-        CreateMap<TransactionCategory, TransactionCategoryDto>()
-            .ForMember(d => d.TransactionCount, o => o.MapFrom(s => s.Transactions.Count));
+        config.NewConfig<TransactionCategory, TransactionCategoryDto>()
+            .Map(d => d.TransactionCount, s => s.Transactions.Count);
 
-        CreateMap<FinanceTransaction, FinanceTransactionDto>()
-            .ForMember(d => d.CategoryName, o => o.MapFrom(s => s.Category.Name))
-            .ForMember(d => d.InvoiceNumber, o => o.MapFrom(s => s.Invoice != null ? s.Invoice.Number : null));
+        config.NewConfig<FinanceTransaction, FinanceTransactionDto>()
+            .Map(d => d.CategoryName, s => s.Category.Name)
+            .Map(d => d.InvoiceNumber, s => s.Invoice != null ? s.Invoice.Number : null);
 
-        CreateMap<Budget, BudgetDto>()
-            .ForMember(d => d.CategoryName, o => o.MapFrom(s => s.Category.Name))
-            .ForMember(d => d.SpentAmount, o => o.Ignore()); // ayrıca hesablanır
+        config.NewConfig<Budget, BudgetDto>()
+            .Map(d => d.CategoryName, s => s.Category.Name)
+            .Ignore(d => d.SpentAmount); // ayrıca hesablanır
 
-        CreateMap<InvoiceItem, InvoiceItemDto>();
-        CreateMap<Payment, PaymentDto>();
+        config.NewConfig<InvoiceItem, InvoiceItemDto>();
+        config.NewConfig<Payment, PaymentDto>();
 
-        CreateMap<Invoice, InvoiceDto>()
-            .ForMember(d => d.PaidAmount, o => o.MapFrom(s => s.Payments.Sum(p => p.Amount)));
+        config.NewConfig<Invoice, InvoiceDto>()
+            .Map(d => d.PaidAmount, s => s.Payments.Sum(p => p.Amount));
     }
 }

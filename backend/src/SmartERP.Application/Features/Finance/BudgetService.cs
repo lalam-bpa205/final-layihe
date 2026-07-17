@@ -1,4 +1,4 @@
-using AutoMapper;
+using MapsterMapper;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;

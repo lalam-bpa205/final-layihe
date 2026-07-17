@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -25,7 +25,7 @@ public class WorkScheduleService(
     public async Task<List<WorkScheduleDto>> GetAllAsync(CancellationToken ct = default) =>
         await unitOfWork.Repository<WorkSchedule>().Query()
             .OrderBy(w => w.Name)
-            .ProjectTo<WorkScheduleDto>(mapper.ConfigurationProvider)
+            .ProjectToType<WorkScheduleDto>()
             .ToListAsync(ct);
 
     public async Task<WorkScheduleDto> CreateAsync(SaveWorkScheduleRequest request, CancellationToken ct = default)
@@ -92,6 +92,6 @@ public class WorkScheduleService(
     private async Task<WorkScheduleDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<WorkSchedule>().Query()
             .Where(w => w.Id == id)
-            .ProjectTo<WorkScheduleDto>(mapper.ConfigurationProvider)
+            .ProjectToType<WorkScheduleDto>()
             .FirstAsync(ct);
 }

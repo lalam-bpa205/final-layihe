@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -25,7 +25,7 @@ public class CategoryService(
     public async Task<List<CategoryDto>> GetAllAsync(CancellationToken ct = default) =>
         await unitOfWork.Repository<Category>().Query()
             .OrderBy(c => c.Name)
-            .ProjectTo<CategoryDto>(mapper.ConfigurationProvider)
+            .ProjectToType<CategoryDto>()
             .ToListAsync(ct);
 
     public async Task<CategoryDto> CreateAsync(SaveCategoryRequest request, CancellationToken ct = default)

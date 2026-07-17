@@ -1,4 +1,5 @@
-using AutoMapper;
+using Mapster;
+using MapsterMapper;
 using FluentValidation;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -42,12 +43,22 @@ public sealed class TestHarness : IDisposable
         Mapper = BuildMapper();
     }
 
+    // Mapster qlobal config bir dəfə qurulur — servislər ProjectToType<T>()
+    // argümentsiz çağırdığı üçün GlobalSettings-ə əsaslanır (tətbiqdəki kimi).
+    private static readonly object _configLock = new();
+    private static bool _mapsterReady;
+
     private static IMapper BuildMapper()
     {
-        var config = new MapperConfiguration(
-            cfg => cfg.AddMaps(typeof(DependencyInjection).Assembly),
-            new LoggerFactoryStub());
-        return config.CreateMapper();
+        lock (_configLock)
+        {
+            if (!_mapsterReady)
+            {
+                TypeAdapterConfig.GlobalSettings.Scan(typeof(DependencyInjection).Assembly);
+                _mapsterReady = true;
+            }
+        }
+        return new Mapper(TypeAdapterConfig.GlobalSettings);
     }
 
     /// <summary>Validator-u birbaşa Application assembly-sindən götürür.</summary>
@@ -84,24 +95,5 @@ public sealed class TestHarness : IDisposable
             CallCount++;
             return Task.CompletedTask;
         }
-    }
-}
-
-/// <summary>AutoMapper 16 ILoggerFactory tələb edir — testlərdə log lazım deyil.</summary>
-internal sealed class LoggerFactoryStub : Microsoft.Extensions.Logging.ILoggerFactory
-{
-    public void AddProvider(Microsoft.Extensions.Logging.ILoggerProvider provider) { }
-    public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new NullLogger();
-    public void Dispose() { }
-
-    private sealed class NullLogger : Microsoft.Extensions.Logging.ILogger
-    {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => false;
-        public void Log<TState>(
-            Microsoft.Extensions.Logging.LogLevel logLevel,
-            Microsoft.Extensions.Logging.EventId eventId,
-            TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) { }
     }
 }

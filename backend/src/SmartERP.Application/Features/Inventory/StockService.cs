@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -45,7 +45,7 @@ public class StockService(
 
         return await query
             .OrderByDescending(m => m.Id)
-            .ProjectTo<StockMovementDto>(mapper.ConfigurationProvider)
+            .ProjectToType<StockMovementDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
@@ -203,7 +203,7 @@ public class StockService(
         var ids = movements.Select(m => m.Id).ToList();
         return await unitOfWork.Repository<StockMovement>().Query()
             .Where(m => ids.Contains(m.Id))
-            .ProjectTo<StockMovementDto>(mapper.ConfigurationProvider)
+            .ProjectToType<StockMovementDto>()
             .ToListAsync(ct);
     }
 
@@ -273,6 +273,6 @@ public class StockService(
     private async Task<StockMovementDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<StockMovement>().Query()
             .Where(m => m.Id == id)
-            .ProjectTo<StockMovementDto>(mapper.ConfigurationProvider)
+            .ProjectToType<StockMovementDto>()
             .FirstAsync(ct);
 }

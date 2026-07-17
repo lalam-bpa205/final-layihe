@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Transport.Dtos;
@@ -104,7 +104,7 @@ public class TransportSummaryService(
         var recentDeliveries = await unitOfWork.Repository<Delivery>().Query()
             .OrderByDescending(d => d.Id)
             .Take(8)
-            .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DeliveryDto>()
             .ToListAsync(ct);
 
         return new TransportSummaryDto

@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Inventory.Dtos;
@@ -28,7 +28,7 @@ public class InventorySummaryService(IUnitOfWork unitOfWork, IMapper mapper) : I
         var movementsThisMonth = await unitOfWork.Repository<StockMovement>()
             .CountAsync(m => m.CreatedDate >= monthStart && m.CreatedDate < nextMonthStart, ct);
 
-        // Az stok — balans StockMovements cəmindən hesablanır (ProjectTo CurrentStock-u doldurur)
+        // Az stok — balans StockMovements cəmindən hesablanır (ProjectToType CurrentStock-u doldurur)
         var lowStockQuery = ProjectedProducts().Where(p => p.CurrentStock <= p.MinStockLevel);
         var lowStockCount = await lowStockQuery.CountAsync(ct);
         var lowStockProducts = await lowStockQuery
@@ -92,7 +92,7 @@ public class InventorySummaryService(IUnitOfWork unitOfWork, IMapper mapper) : I
         var recentMovements = await unitOfWork.Repository<StockMovement>().Query()
             .OrderByDescending(m => m.Id)
             .Take(8)
-            .ProjectTo<StockMovementDto>(mapper.ConfigurationProvider)
+            .ProjectToType<StockMovementDto>()
             .ToListAsync(ct);
 
         return new InventorySummaryDto
@@ -112,5 +112,5 @@ public class InventorySummaryService(IUnitOfWork unitOfWork, IMapper mapper) : I
 
     private IQueryable<ProductDto> ProjectedProducts() =>
         unitOfWork.Repository<Product>().Query()
-            .ProjectTo<ProductDto>(mapper.ConfigurationProvider);
+            .ProjectToType<ProductDto>();
 }

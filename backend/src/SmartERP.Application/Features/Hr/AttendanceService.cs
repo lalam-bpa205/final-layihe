@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
 using SmartERP.Application.Common.Interfaces;
@@ -30,7 +30,7 @@ public class AttendanceService(IUnitOfWork unitOfWork, IMapper mapper) : IAttend
 
         return await query
             .OrderBy(a => a.Employee.FirstName)
-            .ProjectTo<AttendanceDto>(mapper.ConfigurationProvider)
+            .ProjectToType<AttendanceDto>()
             .ToListAsync(ct);
     }
 
@@ -151,6 +151,6 @@ public class AttendanceService(IUnitOfWork unitOfWork, IMapper mapper) : IAttend
     private async Task<AttendanceDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<Attendance>().Query()
             .Where(a => a.Id == id)
-            .ProjectTo<AttendanceDto>(mapper.ConfigurationProvider)
+            .ProjectToType<AttendanceDto>()
             .FirstAsync(ct);
 }

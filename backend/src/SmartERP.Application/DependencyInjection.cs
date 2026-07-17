@@ -1,5 +1,7 @@
 using System.Reflection;
 using FluentValidation;
+using Mapster;
+using MapsterMapper;
 using Microsoft.Extensions.DependencyInjection;
 using SmartERP.Application.Features.Auth;
 using SmartERP.Application.Features.Hr;
@@ -17,7 +19,13 @@ public static class DependencyInjection
     {
         var assembly = Assembly.GetExecutingAssembly();
 
-        services.AddAutoMapper(_ => { }, assembly);
+        // Mapster — mapping-lər IRegister siniflərindən qlobal config-ə yığılır.
+        // Qlobal config işlədilir ki, ProjectToType<T>() argümentsiz işləsin.
+        var mapsterConfig = TypeAdapterConfig.GlobalSettings;
+        mapsterConfig.Scan(assembly);
+        services.AddSingleton(mapsterConfig);
+        services.AddScoped<IMapper, ServiceMapper>();
+
         services.AddValidatorsFromAssembly(assembly);
 
         services.AddScoped<IAuthService, AuthService>();

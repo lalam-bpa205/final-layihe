@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -33,7 +33,7 @@ public class VehicleService(
 
         return await query
             .OrderBy(v => v.PlateNumber)
-            .ProjectTo<VehicleDto>(mapper.ConfigurationProvider)
+            .ProjectToType<VehicleDto>()
             .ToListAsync(ct);
     }
 
@@ -42,7 +42,7 @@ public class VehicleService(
     {
         var vehicle = await unitOfWork.Repository<Vehicle>().Query()
             .Where(v => v.Id == id)
-            .ProjectTo<VehicleDto>(mapper.ConfigurationProvider)
+            .ProjectToType<VehicleDto>()
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("Avtomobil", id);
 
@@ -94,20 +94,20 @@ public class VehicleService(
         var recentFuelRecords = await fuelQuery
             .OrderByDescending(f => f.Date).ThenByDescending(f => f.Id)
             .Take(8)
-            .ProjectTo<FuelRecordDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FuelRecordDto>()
             .ToListAsync(ct);
 
         var recentMaintenance = await maintenanceQuery
             .OrderByDescending(m => m.Date).ThenByDescending(m => m.Id)
             .Take(8)
-            .ProjectTo<MaintenanceRecordDto>(mapper.ConfigurationProvider)
+            .ProjectToType<MaintenanceRecordDto>()
             .ToListAsync(ct);
 
         var recentDeliveries = await deliveryRepo.Query()
             .Where(d => d.VehicleId == id)
             .OrderByDescending(d => d.Id)
             .Take(5)
-            .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DeliveryDto>()
             .ToListAsync(ct);
 
         return new VehicleDetailsDto

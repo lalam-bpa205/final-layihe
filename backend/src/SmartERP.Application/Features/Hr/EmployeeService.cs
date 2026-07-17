@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -67,14 +67,14 @@ public class EmployeeService(
         };
 
         return await query
-            .ProjectTo<EmployeeDto>(mapper.ConfigurationProvider)
+            .ProjectToType<EmployeeDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
     public async Task<EmployeeDto> GetByIdAsync(int id, CancellationToken ct = default) =>
         await unitOfWork.Repository<Employee>().Query()
             .Where(e => e.Id == id)
-            .ProjectTo<EmployeeDto>(mapper.ConfigurationProvider)
+            .ProjectToType<EmployeeDto>()
             .FirstOrDefaultAsync(ct)
         ?? throw new NotFoundException("İşçi", id);
 
@@ -213,14 +213,14 @@ public class EmployeeService(
             .Where(lr => lr.EmployeeId == id)
             .OrderByDescending(lr => lr.Id)
             .Take(5)
-            .ProjectTo<LeaveRequestDto>(mapper.ConfigurationProvider)
+            .ProjectToType<LeaveRequestDto>()
             .ToListAsync(ct);
 
         var recentAttendance = await attendanceRepo.Query()
             .Where(a => a.EmployeeId == id)
             .OrderByDescending(a => a.Date)
             .Take(10)
-            .ProjectTo<AttendanceDto>(mapper.ConfigurationProvider)
+            .ProjectToType<AttendanceDto>()
             .ToListAsync(ct);
 
         return new EmployeeProfileDto

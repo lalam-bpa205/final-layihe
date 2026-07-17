@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -40,7 +40,7 @@ public class LeaveRequestService(
 
         return await query
             .OrderByDescending(lr => lr.Id)
-            .ProjectTo<LeaveRequestDto>(mapper.ConfigurationProvider)
+            .ProjectToType<LeaveRequestDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
@@ -168,6 +168,6 @@ public class LeaveRequestService(
     private async Task<LeaveRequestDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<LeaveRequest>().Query()
             .Where(lr => lr.Id == id)
-            .ProjectTo<LeaveRequestDto>(mapper.ConfigurationProvider)
+            .ProjectToType<LeaveRequestDto>()
             .FirstAsync(ct);
 }

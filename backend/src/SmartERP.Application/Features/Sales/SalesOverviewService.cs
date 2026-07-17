@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Sales.Dtos;
@@ -108,7 +108,7 @@ public class SalesOverviewService(
         var recentSalesOrders = await salesRepo.Query()
             .OrderByDescending(o => o.Id)
             .Take(8)
-            .ProjectTo<SalesOrderDto>(mapper.ConfigurationProvider)
+            .ProjectToType<SalesOrderDto>()
             .ToListAsync(ct);
 
         return new SalesOverviewDto

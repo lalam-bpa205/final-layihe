@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -32,7 +32,7 @@ public class CustomerService(
 
         return await query
             .OrderBy(c => c.Name)
-            .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
+            .ProjectToType<PartnerDto>()
             .ToListAsync(ct);
     }
 
@@ -40,7 +40,7 @@ public class CustomerService(
     {
         var customer = await unitOfWork.Repository<Customer>().Query()
             .Where(c => c.Id == id)
-            .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
+            .ProjectToType<PartnerDto>()
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("Müştəri", id);
 
@@ -65,7 +65,7 @@ public class CustomerService(
         var recentOrders = await orderQuery
             .OrderByDescending(o => o.Id)
             .Take(10)
-            .ProjectTo<SalesOrderDto>(mapper.ConfigurationProvider)
+            .ProjectToType<SalesOrderDto>()
             .ToListAsync(ct);
 
         return new CustomerDetailsDto
@@ -159,7 +159,7 @@ public class SupplierService(
 
         return await query
             .OrderBy(s => s.Name)
-            .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
+            .ProjectToType<PartnerDto>()
             .ToListAsync(ct);
     }
 
@@ -167,7 +167,7 @@ public class SupplierService(
     {
         var supplier = await unitOfWork.Repository<Supplier>().Query()
             .Where(s => s.Id == id)
-            .ProjectTo<PartnerDto>(mapper.ConfigurationProvider)
+            .ProjectToType<PartnerDto>()
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("Təchizatçı", id);
 
@@ -184,7 +184,7 @@ public class SupplierService(
         var recentOrders = await orderQuery
             .OrderByDescending(o => o.Id)
             .Take(10)
-            .ProjectTo<PurchaseOrderDto>(mapper.ConfigurationProvider)
+            .ProjectToType<PurchaseOrderDto>()
             .ToListAsync(ct);
 
         return new SupplierDetailsDto

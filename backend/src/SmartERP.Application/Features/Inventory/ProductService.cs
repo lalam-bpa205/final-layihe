@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -59,7 +59,7 @@ public class ProductService(
         };
 
         return await query
-            .ProjectTo<ProductDto>(mapper.ConfigurationProvider)
+            .ProjectToType<ProductDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
@@ -159,7 +159,7 @@ public class ProductService(
         var recentMovements = await movementQuery
             .OrderByDescending(m => m.Id)
             .Take(10)
-            .ProjectTo<StockMovementDto>(mapper.ConfigurationProvider)
+            .ProjectToType<StockMovementDto>()
             .ToListAsync(ct);
 
         return new ProductDetailsDto
@@ -231,7 +231,7 @@ public class ProductService(
 
     private IQueryable<ProductDto> ProjectedQuery() =>
         unitOfWork.Repository<Product>().Query()
-            .ProjectTo<ProductDto>(mapper.ConfigurationProvider);
+            .ProjectToType<ProductDto>();
 
     private async Task EnsureValidAsync(SaveProductRequest request, int? id, CancellationToken ct)
     {

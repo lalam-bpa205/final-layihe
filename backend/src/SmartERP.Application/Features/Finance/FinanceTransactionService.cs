@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -32,7 +32,7 @@ public class TransactionCategoryService(
 
         return await query
             .OrderBy(c => c.Type).ThenBy(c => c.Name)
-            .ProjectTo<TransactionCategoryDto>(mapper.ConfigurationProvider)
+            .ProjectToType<TransactionCategoryDto>()
             .ToListAsync(ct);
     }
 
@@ -92,7 +92,7 @@ public class FinanceTransactionService(
 
         return await query
             .OrderByDescending(t => t.Date).ThenByDescending(t => t.Id)
-            .ProjectTo<FinanceTransactionDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FinanceTransactionDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
@@ -122,7 +122,7 @@ public class FinanceTransactionService(
 
         return await unitOfWork.Repository<FinanceTransaction>().Query()
             .Where(t => t.Id == transaction.Id)
-            .ProjectTo<FinanceTransactionDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FinanceTransactionDto>()
             .FirstAsync(ct);
     }
 

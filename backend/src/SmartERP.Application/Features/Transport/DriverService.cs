@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -33,7 +33,7 @@ public class DriverService(
 
         return await query
             .OrderBy(d => d.Employee.FirstName)
-            .ProjectTo<DriverDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DriverDto>()
             .ToListAsync(ct);
     }
 
@@ -45,7 +45,7 @@ public class DriverService(
         return await unitOfWork.Repository<Driver>().Query()
             .Where(d => d.LicenseExpiryDate <= deadline)
             .OrderBy(d => d.LicenseExpiryDate)
-            .ProjectTo<DriverDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DriverDto>()
             .ToListAsync(ct);
     }
 
@@ -114,6 +114,6 @@ public class DriverService(
     private async Task<DriverDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<Driver>().Query()
             .Where(d => d.Id == id)
-            .ProjectTo<DriverDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DriverDto>()
             .FirstAsync(ct);
 }

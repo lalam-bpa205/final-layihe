@@ -1,34 +1,34 @@
-using AutoMapper;
+using Mapster;
 using SmartERP.Application.Features.Sales.Dtos;
 using SmartERP.Domain.Entities.Sales;
 
 namespace SmartERP.Application.Features.Sales;
 
-public class SalesMappingProfile : Profile
+public class SalesMappingRegister : IRegister
 {
-    public SalesMappingProfile()
+    public void Register(TypeAdapterConfig config)
     {
-        CreateMap<Customer, PartnerDto>()
-            .ForMember(d => d.OrderCount, o => o.MapFrom(s => s.SalesOrders.Count));
+        config.NewConfig<Customer, PartnerDto>()
+            .Map(d => d.OrderCount, s => s.SalesOrders.Count);
 
-        CreateMap<Supplier, PartnerDto>()
-            .ForMember(d => d.OrderCount, o => o.MapFrom(s => s.PurchaseOrders.Count));
+        config.NewConfig<Supplier, PartnerDto>()
+            .Map(d => d.OrderCount, s => s.PurchaseOrders.Count);
 
-        CreateMap<SalesOrderItem, OrderItemDto>()
-            .ForMember(d => d.ProductName, o => o.MapFrom(s => s.Product.Name))
-            .ForMember(d => d.Unit, o => o.MapFrom(s => s.Product.Unit));
+        config.NewConfig<SalesOrderItem, OrderItemDto>()
+            .Map(d => d.ProductName, s => s.Product.Name)
+            .Map(d => d.Unit, s => s.Product.Unit);
 
-        CreateMap<PurchaseOrderItem, OrderItemDto>()
-            .ForMember(d => d.ProductName, o => o.MapFrom(s => s.Product.Name))
-            .ForMember(d => d.Unit, o => o.MapFrom(s => s.Product.Unit));
+        config.NewConfig<PurchaseOrderItem, OrderItemDto>()
+            .Map(d => d.ProductName, s => s.Product.Name)
+            .Map(d => d.Unit, s => s.Product.Unit);
 
-        CreateMap<SalesOrder, SalesOrderDto>()
-            .ForMember(d => d.CustomerName, o => o.MapFrom(s => s.Customer.Name))
-            .ForMember(d => d.WarehouseName, o => o.MapFrom(s => s.Warehouse.Name))
-            .ForMember(d => d.InvoiceNumber, o => o.MapFrom(s => s.Invoice != null ? s.Invoice.Number : null));
+        config.NewConfig<SalesOrder, SalesOrderDto>()
+            .Map(d => d.CustomerName, s => s.Customer.Name)
+            .Map(d => d.WarehouseName, s => s.Warehouse.Name)
+            .Map(d => d.InvoiceNumber, s => s.Invoice != null ? s.Invoice.Number : null);
 
-        CreateMap<PurchaseOrder, PurchaseOrderDto>()
-            .ForMember(d => d.SupplierName, o => o.MapFrom(s => s.Supplier.Name))
-            .ForMember(d => d.WarehouseName, o => o.MapFrom(s => s.Warehouse.Name));
+        config.NewConfig<PurchaseOrder, PurchaseOrderDto>()
+            .Map(d => d.SupplierName, s => s.Supplier.Name)
+            .Map(d => d.WarehouseName, s => s.Warehouse.Name);
     }
 }

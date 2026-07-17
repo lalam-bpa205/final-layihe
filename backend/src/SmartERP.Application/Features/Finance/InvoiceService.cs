@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -44,14 +44,14 @@ public class InvoiceService(
 
         return await query
             .OrderByDescending(i => i.Id)
-            .ProjectTo<InvoiceDto>(mapper.ConfigurationProvider)
+            .ProjectToType<InvoiceDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
     public async Task<InvoiceDto> GetByIdAsync(int id, CancellationToken ct = default) =>
         await unitOfWork.Repository<Invoice>().Query()
             .Where(i => i.Id == id)
-            .ProjectTo<InvoiceDto>(mapper.ConfigurationProvider)
+            .ProjectToType<InvoiceDto>()
             .FirstOrDefaultAsync(ct)
         ?? throw new NotFoundException("Faktura", id);
 

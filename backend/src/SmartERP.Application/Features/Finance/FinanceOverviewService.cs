@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Finance.Dtos;
@@ -89,14 +89,14 @@ public class FinanceOverviewService(
                 && i.DueDate >= today && i.DueDate <= upcomingLimit)
             .OrderBy(i => i.DueDate).ThenBy(i => i.Id)
             .Take(5)
-            .ProjectTo<InvoiceDto>(mapper.ConfigurationProvider)
+            .ProjectToType<InvoiceDto>()
             .ToListAsync(ct);
 
         // ---- Son əməliyyatlar ----
         var recentTransactions = await unitOfWork.Repository<FinanceTransaction>().Query()
             .OrderByDescending(t => t.Date).ThenByDescending(t => t.Id)
             .Take(8)
-            .ProjectTo<FinanceTransactionDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FinanceTransactionDto>()
             .ToListAsync(ct);
 
         return new FinanceOverviewDto

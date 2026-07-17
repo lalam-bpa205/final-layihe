@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -47,14 +47,14 @@ public class DeliveryService(
 
         return await query
             .OrderByDescending(d => d.Id)
-            .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DeliveryDto>()
             .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
     public async Task<DeliveryDto> GetByIdAsync(int id, CancellationToken ct = default) =>
         await unitOfWork.Repository<Delivery>().Query()
             .Where(d => d.Id == id)
-            .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DeliveryDto>()
             .FirstOrDefaultAsync(ct)
         ?? throw new NotFoundException("Çatdırılma", id);
 
@@ -204,6 +204,6 @@ public class DeliveryService(
     private async Task<DeliveryDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<Delivery>().Query()
             .Where(d => d.Id == id)
-            .ProjectTo<DeliveryDto>(mapper.ConfigurationProvider)
+            .ProjectToType<DeliveryDto>()
             .FirstAsync(ct);
 }

@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -27,7 +27,7 @@ public class WarehouseService(
     public async Task<List<WarehouseDto>> GetAllAsync(CancellationToken ct = default) =>
         await unitOfWork.Repository<Warehouse>().Query()
             .OrderBy(w => w.Name)
-            .ProjectTo<WarehouseDto>(mapper.ConfigurationProvider)
+            .ProjectToType<WarehouseDto>()
             .ToListAsync(ct);
 
     public async Task<WarehouseDto> CreateAsync(SaveWarehouseRequest request, CancellationToken ct = default)
@@ -91,7 +91,7 @@ public class WarehouseService(
     private async Task<WarehouseDto> GetDtoAsync(int id, CancellationToken ct) =>
         await unitOfWork.Repository<Warehouse>().Query()
             .Where(w => w.Id == id)
-            .ProjectTo<WarehouseDto>(mapper.ConfigurationProvider)
+            .ProjectToType<WarehouseDto>()
             .FirstAsync(ct);
 
     /// <summary>

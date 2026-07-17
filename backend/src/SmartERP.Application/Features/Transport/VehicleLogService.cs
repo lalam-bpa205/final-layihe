@@ -1,5 +1,5 @@
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
+using MapsterMapper;
+using Mapster;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartERP.Application.Common.Exceptions;
@@ -35,7 +35,7 @@ public class VehicleLogService(
 
         return await query
             .OrderByDescending(f => f.Date).ThenByDescending(f => f.Id)
-            .ProjectTo<FuelRecordDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FuelRecordDto>()
             .ToListAsync(ct);
     }
 
@@ -65,7 +65,7 @@ public class VehicleLogService(
 
         return await unitOfWork.Repository<FuelRecord>().Query()
             .Where(f => f.Id == record.Id)
-            .ProjectTo<FuelRecordDto>(mapper.ConfigurationProvider)
+            .ProjectToType<FuelRecordDto>()
             .FirstAsync(ct);
     }
 
@@ -77,7 +77,7 @@ public class VehicleLogService(
 
         return await query
             .OrderByDescending(m => m.Date).ThenByDescending(m => m.Id)
-            .ProjectTo<MaintenanceRecordDto>(mapper.ConfigurationProvider)
+            .ProjectToType<MaintenanceRecordDto>()
             .ToListAsync(ct);
     }
 
@@ -102,7 +102,7 @@ public class VehicleLogService(
 
         return await unitOfWork.Repository<MaintenanceRecord>().Query()
             .Where(m => m.Id == record.Id)
-            .ProjectTo<MaintenanceRecordDto>(mapper.ConfigurationProvider)
+            .ProjectToType<MaintenanceRecordDto>()
             .FirstAsync(ct);
     }
 
