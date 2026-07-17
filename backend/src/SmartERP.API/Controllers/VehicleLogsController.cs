@@ -24,6 +24,12 @@ public class VehicleLogsController(IVehicleLogService logService) : ControllerBa
         [FromQuery] int? vehicleId, CancellationToken ct) =>
         Ok(await logService.GetMaintenanceRecordsAsync(vehicleId, ct));
 
+    /// <summary>Gecikmiş və yaxınlaşan texniki xidmətlər.</summary>
+    [HttpGet("maintenance-due")]
+    public async Task<ActionResult<List<MaintenanceDueDto>>> GetMaintenanceDue(
+        [FromQuery] int withinDays, CancellationToken ct) =>
+        Ok(await logService.GetMaintenanceDueAsync(withinDays <= 0 ? 30 : withinDays, ct));
+
     [HttpPost("maintenance-records")]
     public async Task<ActionResult<MaintenanceRecordDto>> AddMaintenanceRecord(SaveMaintenanceRecordRequest request, CancellationToken ct) =>
         Ok(await logService.AddMaintenanceRecordAsync(request, ct));

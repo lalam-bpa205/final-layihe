@@ -16,6 +16,63 @@ import {
 } from '../../components/ui';
 import { fmtMoney, fmtDate } from './transportShared';
 
+// Gecikmiş və yaxınlaşan texniki xidmətlər üçün xəbərdarlıq zolağı.
+function MaintenanceDueBanner({ due, onSchedule }) {
+  if (!due || due.length === 0) return null;
+
+  const overdue = due.filter((d) => d.isOverdue);
+  const soon = due.filter((d) => !d.isOverdue);
+
+  const dueLabel = (d) => {
+    if (d.isOverdue) return `${Math.abs(d.daysUntilDue)} gün gecikib`;
+    if (d.daysUntilDue === 0) return 'bu gün';
+    return `${d.daysUntilDue} gün qalıb`;
+  };
+
+  return (
+    <div className="mb-4 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/70">
+      <div className="flex items-center justify-between gap-3 border-b border-amber-200/70 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg" aria-hidden="true">🔧</span>
+          <div>
+            <p className="text-sm font-semibold text-amber-900">Texniki xidmət diqqət tələb edir</p>
+            <p className="text-xs text-amber-700/80">
+              {overdue.length > 0 && `${overdue.length} gecikmiş`}
+              {overdue.length > 0 && soon.length > 0 && ' · '}
+              {soon.length > 0 && `${soon.length} yaxınlaşan`} servis
+            </p>
+          </div>
+        </div>
+      </div>
+      <ul className="divide-y divide-amber-200/50">
+        {due.map((d) => (
+          <li key={d.vehicleId} className="flex items-center justify-between gap-3 px-5 py-2.5">
+            <div className="flex items-center gap-3">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${d.isOverdue ? 'bg-red-500' : 'bg-amber-500'}`}
+                aria-hidden="true"
+              />
+              <div>
+                <span className="font-mono text-sm font-semibold text-slate-800">{d.vehiclePlate}</span>
+                <span className="ml-2 text-xs text-slate-500">{d.brand} {d.model}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-right">
+              <div>
+                <p className="text-xs tabular-nums text-slate-500">{fmtDate(d.dueDate)}</p>
+                <p className={`text-xs font-semibold ${d.isOverdue ? 'text-red-600' : 'text-amber-700'}`}>
+                  {dueLabel(d)}
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={onSchedule}>Servis qeyd et</Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function VehicleLogsPage() {
   const [tab, setTab] = useState('fuel');
   const [fuel, setFuel] = useState([]);
@@ -44,9 +101,12 @@ export default function VehicleLogsPage() {
     load();
   }, [load]);
 
+  const [due, setDue] = useState([]);
+
   useEffect(() => {
     api.get('/vehicles').then(({ data }) => setVehicles(data));
     api.get('/drivers').then(({ data }) => setDrivers(data));
+    api.get('/maintenance-due').then(({ data }) => setDue(data)).catch(() => {});
   }, []);
 
   const openPanel = (type) => {
@@ -83,6 +143,7 @@ export default function VehicleLogsPage() {
       }
       setPanel(null);
       load();
+      api.get('/maintenance-due').then(({ data }) => setDue(data)).catch(() => {});
     } catch (err) {
       const data = err.response?.data;
       setError(
@@ -107,6 +168,8 @@ export default function VehicleLogsPage() {
           </>
         }
       />
+
+      <MaintenanceDueBanner due={due} onSchedule={() => openPanel('maintenance')} />
 
       <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
         <Tabs

@@ -48,6 +48,9 @@ public class DashboardDto
     /// <summary>Gözləyən satış + alış sifarişləri.</summary>
     public int PendingOrdersCount { get; set; }
 
+    /// <summary>Gecikmiş və yaxınlaşan (30 gün) texniki xidmətlər.</summary>
+    public int MaintenanceDueCount { get; set; }
+
     public List<ModuleActivityPoint> ModulesActivity { get; set; } = [];
     public List<RecentActivityPoint> RecentActivity { get; set; } = [];
     public List<TopUserPoint> TopUsers { get; set; } = [];
@@ -207,6 +210,15 @@ public class DashboardService(IUnitOfWork unitOfWork, IAuditLogReader auditLogRe
         var pendingSales = await salesRepo.CountAsync(o => o.Status == SalesOrderStatus.Pending, ct);
         var pendingPurchases = await purchaseRepo.CountAsync(o => o.Status == PurchaseOrderStatus.Pending, ct);
         dto.PendingOrdersCount = pendingSales + pendingPurchases;
+
+        // Gecikmiş və yaxınlaşan texniki xidmətlər (avtomobil üzrə ən son planlaşdırılan tarix)
+        var maintHorizon = today.AddDays(30);
+        var nextDueByVehicle = await unitOfWork.Repository<MaintenanceRecord>().Query()
+            .Where(m => m.NextDueDate != null)
+            .GroupBy(m => m.VehicleId)
+            .Select(g => g.Max(m => m.NextDueDate!.Value))
+            .ToListAsync(ct);
+        dto.MaintenanceDueCount = nextDueByVehicle.Count(due => due <= maintHorizon);
 
         // Modul üzrə aktivlik (əsas obyektlərin sayı)
         var deliveryCount = await unitOfWork.Repository<Delivery>().CountAsync(ct: ct);

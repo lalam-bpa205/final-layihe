@@ -62,6 +62,7 @@ public static class DemoDataSeeder
             await SeedFinanceAsync(context, finCategories, invoices, salesOrders, monthlyPayroll, monthStart, today);
             await SeedDeliveriesAsync(context, salesOrders, employees, monthStart, today);
             await SeedFuelAsync(context); // GPS izlərindən sonra — məsafəyə əsaslanır
+            await SeedMaintenanceAsync(context, today);
             await SeedHrActivityAsync(context, employees, today);
         }
         finally
@@ -1015,6 +1016,77 @@ public static class DemoDataSeeder
         }
 
         context.VehicleLocations.AddRange(locations);
+        await context.SaveChangesAsync();
+    }
+
+    // ---------- Texniki xidmət ----------
+
+    /// <summary>
+    /// Hər avtomobil üçün keçmiş texniki xidmət qeydləri + növbəti planlaşdırılmış
+    /// tarix. Parkın bir hissəsi bilərəkdən gecikmiş/yaxınlaşan servisə qoyulur ki,
+    /// idarəetmə panelindəki xəbərdarlıq işlədiyi görünsün.
+    /// </summary>
+    private static async Task SeedMaintenanceAsync(AppDbContext context, DateOnly today)
+    {
+        if (await context.MaintenanceRecords.AnyAsync()) return;
+
+        var vehicles = await context.Vehicles.ToListAsync();
+        if (vehicles.Count == 0) return;
+
+        var works = new (string Desc, decimal Min, decimal Max)[]
+        {
+            ("Yağ və filtr dəyişimi", 80, 160),
+            ("Əyləc kolodkalarının dəyişimi", 120, 300),
+            ("Təkərlərin növbələnməsi və balans", 40, 90),
+            ("Planlı texniki baxış", 150, 400),
+            ("Soyutma sisteminin yoxlanması", 60, 180),
+            ("Transmissiya yağının dəyişimi", 100, 250),
+        };
+
+        var records = new List<MaintenanceRecord>();
+
+        for (var vi = 0; vi < vehicles.Count; vi++)
+        {
+            var vehicle = vehicles[vi];
+
+            // 2–4 keçmiş servis, hər biri ~3 ay aralıqla
+            var pastCount = Rnd.Next(2, 5);
+            for (var i = pastCount; i >= 1; i--)
+            {
+                var (desc, min, max) = works[Rnd.Next(works.Length)];
+                var date = today.AddDays(-i * Rnd.Next(75, 105));
+                records.Add(new MaintenanceRecord
+                {
+                    VehicleId = vehicle.Id,
+                    Date = date,
+                    Description = desc,
+                    Cost = Math.Round(min + (decimal)Rnd.NextDouble() * (max - min), 2),
+                    NextDueDate = null
+                });
+            }
+
+            // Sonuncu servis + növbəti planlaşdırılmış tarix.
+            // Parkı üç yerə bölürük: gecikmiş / yaxınlaşan / normal.
+            var lastWork = works[Rnd.Next(works.Length)];
+            var bucket = vi % 3; // 0 = gecikmiş, 1 = yaxınlaşan, 2 = normal
+            var nextDue = bucket switch
+            {
+                0 => today.AddDays(-Rnd.Next(3, 25)),   // gecikib
+                1 => today.AddDays(Rnd.Next(4, 25)),    // 30 gün üfüqündə
+                _ => today.AddDays(Rnd.Next(60, 150)),  // hələ vaxtı var
+            };
+
+            records.Add(new MaintenanceRecord
+            {
+                VehicleId = vehicle.Id,
+                Date = today.AddDays(-Rnd.Next(20, 70)),
+                Description = lastWork.Desc,
+                Cost = Math.Round(lastWork.Min + (decimal)Rnd.NextDouble() * (lastWork.Max - lastWork.Min), 2),
+                NextDueDate = nextDue
+            });
+        }
+
+        context.MaintenanceRecords.AddRange(records);
         await context.SaveChangesAsync();
     }
 

@@ -120,6 +120,28 @@ public class MaintenanceRecordDto
     public DateOnly? NextDueDate { get; set; }
 }
 
+/// <summary>
+/// Avtomobilin növbəti texniki xidmət vəziyyəti — sonuncu servis qeydinin
+/// NextDueDate-inə əsasən. Yalnız gecikmiş və ya yaxınlaşan servislər qaytarılır.
+/// </summary>
+public class MaintenanceDueDto
+{
+    public int VehicleId { get; set; }
+    public string VehiclePlate { get; set; } = null!;
+    public string Brand { get; set; } = null!;
+    public string Model { get; set; } = null!;
+
+    public DateOnly? LastServiceDate { get; set; }
+    public string? LastServiceDescription { get; set; }
+    public DateOnly DueDate { get; set; }
+
+    /// <summary>Servisə qalan gün sayı. Mənfi olarsa servis gecikib.</summary>
+    public int DaysUntilDue { get; set; }
+
+    /// <summary>true = tarix keçib, false = yaxınlaşır.</summary>
+    public bool IsOverdue { get; set; }
+}
+
 public record SaveMaintenanceRecordRequest(
     int VehicleId,
     DateOnly Date,

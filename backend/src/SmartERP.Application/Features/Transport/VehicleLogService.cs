@@ -16,6 +16,9 @@ public interface IVehicleLogService
     Task<FuelRecordDto> AddFuelRecordAsync(SaveFuelRecordRequest request, CancellationToken ct = default);
     Task<List<MaintenanceRecordDto>> GetMaintenanceRecordsAsync(int? vehicleId = null, CancellationToken ct = default);
     Task<MaintenanceRecordDto> AddMaintenanceRecordAsync(SaveMaintenanceRecordRequest request, CancellationToken ct = default);
+
+    /// <summary>Gecikmiş və yaxınlaşan (varsayılan 30 gün) texniki xidmətlər.</summary>
+    Task<List<MaintenanceDueDto>> GetMaintenanceDueAsync(int withinDays = 30, CancellationToken ct = default);
 }
 
 public class VehicleLogService(
@@ -101,5 +104,52 @@ public class VehicleLogService(
             .Where(m => m.Id == record.Id)
             .ProjectTo<MaintenanceRecordDto>(mapper.ConfigurationProvider)
             .FirstAsync(ct);
+    }
+
+    public async Task<List<MaintenanceDueDto>> GetMaintenanceDueAsync(int withinDays = 30, CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var horizon = today.AddDays(withinDays);
+
+        // Hər avtomobilin NextDueDate təyin olunmuş SONUNCU servis qeydini götürürük.
+        // Növbəti servis tarixi cədvəldəki ən son planlaşdırılmış tarixdir.
+        var records = await unitOfWork.Repository<MaintenanceRecord>().Query()
+            .Where(m => m.NextDueDate != null)
+            .Select(m => new
+            {
+                m.VehicleId,
+                Plate = m.Vehicle.PlateNumber,
+                m.Vehicle.Brand,
+                m.Vehicle.Model,
+                m.Date,
+                m.Description,
+                DueDate = m.NextDueDate!.Value
+            })
+            .ToListAsync(ct);
+
+        return records
+            .GroupBy(m => m.VehicleId)
+            .Select(g =>
+            {
+                // Ən uzaq planlaşdırılmış tarix = avtomobilin cari "növbəti servisi"
+                var next = g.OrderByDescending(x => x.DueDate).First();
+                var last = g.OrderByDescending(x => x.Date).First();
+                return new MaintenanceDueDto
+                {
+                    VehicleId = g.Key,
+                    VehiclePlate = next.Plate,
+                    Brand = next.Brand,
+                    Model = next.Model,
+                    LastServiceDate = last.Date,
+                    LastServiceDescription = last.Description,
+                    DueDate = next.DueDate,
+                    DaysUntilDue = next.DueDate.DayNumber - today.DayNumber,
+                    IsOverdue = next.DueDate < today
+                };
+            })
+            // Yalnız gecikmiş və ya üfüqdəki servislər
+            .Where(d => d.DueDate <= horizon)
+            .OrderBy(d => d.DueDate)
+            .ToList();
     }
 }

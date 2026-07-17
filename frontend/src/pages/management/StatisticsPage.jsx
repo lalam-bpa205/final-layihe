@@ -188,8 +188,13 @@ export default function StatisticsPage() {
   const lowStockCount = data?.lowStockCount ?? 0;
   const pendingLeaveCount = data?.pendingLeaveCount ?? 0;
   const pendingOrdersCount = data?.pendingOrdersCount ?? 0;
+  const maintenanceDueCount = data?.maintenanceDueCount ?? 0;
   const hasAlerts =
-    overdueInvoiceCount > 0 || lowStockCount > 0 || pendingLeaveCount > 0 || pendingOrdersCount > 0;
+    overdueInvoiceCount > 0 ||
+    lowStockCount > 0 ||
+    pendingLeaveCount > 0 ||
+    pendingOrdersCount > 0 ||
+    maintenanceDueCount > 0;
 
   const maxCategory = Math.max(...expenseByCategory.map((c) => c.amount ?? 0), 0);
   const maxModule = Math.max(...modulesActivity.map((m) => m.recordCount ?? 0), 0);
@@ -303,6 +308,16 @@ export default function StatisticsPage() {
               to="/sales/sales-orders"
             />
           )}
+          {maintenanceDueCount > 0 && (
+            <AlertCard
+              icon="🔧"
+              tone="amber"
+              title="Texniki xidmət vaxtı"
+              value={`${fmtNumber(maintenanceDueCount)} avtomobil`}
+              sub="Gecikmiş və ya yaxınlaşan servis"
+              to="/transport/logs"
+            />
+          )}
         </div>
       ) : (
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
@@ -314,7 +329,7 @@ export default function StatisticsPage() {
               Diqqət tələb edən problem yoxdur
             </p>
             <p className="text-xs text-emerald-700/80">
-              Gecikən faktura, az stok, gözləyən məzuniyyət və ya sifariş qeydə alınmayıb.
+              Gecikən faktura, az stok, gözləyən məzuniyyət/sifariş və ya texniki xidmət qeydə alınmayıb.
             </p>
           </div>
         </div>
