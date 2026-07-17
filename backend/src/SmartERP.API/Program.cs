@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -122,7 +123,34 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
+// ---------- Rate limiting (login brute-force qoruması) ----------
+// Eyni IP-dən dəqiqədə 5 giriş cəhdi — parol təxmin etmə hücumunu ləngidir.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
+
 var app = builder.Build();
+
+// ---------- Production sirr mühafizəsi ----------
+// Placeholder JWT açarı ilə Production-da işə düşmək token saxtalaşdırmasına
+// imkan verərdi — real açar (env: Jwt__SecretKey) tələb olunur.
+var jwtKey = jwtSection["SecretKey"];
+if (app.Environment.IsProduction() &&
+    (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.StartsWith("CHANGE_ME")))
+{
+    throw new InvalidOperationException(
+        "Production mühitində real Jwt:SecretKey təyin edilməlidir (ən azı 64 simvol). " +
+        "Env dəyişəni: Jwt__SecretKey");
+}
 
 // ---------- Migration + Seed ----------
 using (var scope = app.Services.CreateScope())
@@ -150,6 +178,16 @@ using (var scope = app.Services.CreateScope())
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseSerilogRequestLogging();
 
+// Təhlükəsizlik başlıqları — MIME-sniffing, clickjacking və referrer sızmasına qarşı
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -157,6 +195,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

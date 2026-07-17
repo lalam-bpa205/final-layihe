@@ -7,9 +7,11 @@ Kurs layihəsi · **.NET 10 Web API + React 19 + MySQL**
 
 ## Docker ilə (ən sürətli)
 
-Tək əmrlə bütün sistem (MySQL + backend + frontend) qalxır:
+Tək əmrlə bütün sistem (MySQL + backend + frontend) qalxır. Əvvəlcə sirləri
+`.env` faylına köçürün (git-də izlənmir):
 
 ```bash
+cp .env.example .env      # sonra DB_PASSWORD və JWT_SECRET dəyərlərini doldurun
 docker compose up --build
 ```
 
@@ -33,7 +35,17 @@ MySQL servisi işləməlidir. Baza (`smarterp`), cədvəllər və başlanğıc m
 **avtomatik yaranır** — backend ilk dəfə işə düşəndə migration-lar tətbiq olunur və
 rollar + admin istifadəçisi seed edilir. Əl ilə SQL icra etməyə ehtiyac yoxdur.
 
-Bağlantı sətri: [`backend/src/SmartERP.API/appsettings.json`](backend/src/SmartERP.API/appsettings.json) → `ConnectionStrings:Default`
+**Bağlantı sətri (sirlər git-də saxlanmır).** Nümunə faylı kopyalayıb öz MySQL
+parolunuzu yazın:
+
+```powershell
+cd backend\src\SmartERP.API
+Copy-Item appsettings.Development.example.json appsettings.Development.json
+# sonra appsettings.Development.json → ConnectionStrings:Default parolunu redaktə edin
+```
+
+`appsettings.Development.json` git-də izlənmir. Production-da isə env dəyişənləri
+işlədilir: `ConnectionStrings__Default` və `Jwt__SecretKey`.
 
 ### 2. Sistemi qaldırmaq
 

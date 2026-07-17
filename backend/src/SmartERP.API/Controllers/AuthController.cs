@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Auth;
 using SmartERP.Application.Features.Auth.Dtos;
+using SmartERP.Domain.Constants;
 
 namespace SmartERP.API.Controllers;
 
@@ -10,13 +12,18 @@ namespace SmartERP.API.Controllers;
 [Route("api/auth")]
 public class AuthController(IAuthService authService, ICurrentUserService currentUser) : ControllerBase
 {
+    /// <summary>
+    /// Yeni hesab yaradır. Hesablar yalnız admin tərəfindən açılır — açıq
+    /// (anonim) qeydiyyat internetdən özbaşına hesab yaratmağa imkan verərdi.
+    /// </summary>
     [HttpPost("register")]
-    [AllowAnonymous]
+    [Authorize(Roles = $"{RoleNames.SuperAdmin},{RoleNames.Admin}")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct) =>
         Ok(await authService.RegisterAsync(request, ct));
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken ct) =>
         Ok(await authService.LoginAsync(request, ct));
 

@@ -5,6 +5,9 @@ obj/
 .vs/
 logs/
 
+# Lokal sirlər — commit olunmur (şablon: appsettings.Development.example.json)
+appsettings.Development.json
+
 # Node / React
 node_modules/
 dist/
