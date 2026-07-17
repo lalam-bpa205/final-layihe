@@ -1,6 +1,14 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:5042/api';
+// API-nin kök origin-i. Docker/prod-da build zamanı VITE_API_ORIGIN ötürülür
+// (məs. boş sətir → nginx eyni origin-dən /api və /hubs-u proxy edir).
+// Təyin olunmayıbsa lokal dev serverinə düşür.
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? 'http://localhost:5042';
+
+export const API_BASE_URL = `${API_ORIGIN}/api`;
+
+/// <summary>SignalR hub URL-i qurur (notifications | chat).</summary>
+export const hubUrl = (name) => `${API_ORIGIN}/hubs/${name}`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,

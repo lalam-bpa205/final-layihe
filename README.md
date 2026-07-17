@@ -5,7 +5,21 @@ Kurs layihəsi · **.NET 10 Web API + React 19 + MySQL**
 
 ---
 
-## İşə salma
+## Docker ilə (ən sürətli)
+
+Tək əmrlə bütün sistem (MySQL + backend + frontend) qalxır:
+
+```bash
+docker compose up --build
+```
+
+Hazır olduqda: **http://localhost:8080** (giriş: `admin` / `Admin123!`).
+İlk qaldırmada 12 aylıq nümayiş datası avtomatik yaranır. Dayandırmaq: `docker compose down`
+(datanı da silmək üçün `docker compose down -v`).
+
+---
+
+## İşə salma (Docker olmadan)
 
 ### Tələblər
 | Komponent | Versiya | Yoxlama |
@@ -82,6 +96,17 @@ dotnet test
 
 > Testlər **SQLite in-memory** üzərində işləyir — EF-in `InMemory` provideri
 > tranzaksiyaları dəstəkləmədiyi üçün rollback testləri onunla saxta şəkildə keçərdi.
+
+### Davamlı inteqrasiya (CI)
+
+Hər `push` və pull request-də [GitHub Actions](.github/workflows/ci.yml) avtomatik işə düşür:
+
+| İş | Addımlar |
+|---|---|
+| **Backend** | `dotnet restore` → `build` (Release) → **`dotnet test`** (61 test) |
+| **Frontend** | `npm ci` → `npm run lint` → `npm run build` |
+
+Testlər SQLite in-memory işlətdiyi üçün CI-də xarici MySQL tələb olunmur.
 
 ---
 

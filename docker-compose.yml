@@ -1,0 +1,47 @@
+# SmartERP — bütün sistemi bir əmrlə qaldırır: docker compose up --build
+# Sayt: http://localhost:8080  ·  Giriş: admin / Admin123!
+
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: SmartErp2026!
+      MYSQL_DATABASE: smarterp
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      # API yalnız baza hazır olduqdan sonra başlasın
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pSmartErp2026!"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Server=db;Port=3306;Database=smarterp;User=root;Password=SmartErp2026!;"
+      # Nginx eyni origin-dən proxy etdiyi üçün CORS praktiki olaraq tətbiq
+      # olunmur, amma düzgünlük üçün frontend origin-i ötürülür
+      Cors__AllowedOrigins__0: "http://localhost:8080"
+      # İlk qaldırmada 12 aylıq nümayiş datası yaransın
+      DemoData__Enabled: "true"
+    ports:
+      - "5042:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  db-data:

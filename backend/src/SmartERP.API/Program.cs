@@ -106,11 +106,17 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// ---------- CORS (React dev serveri üçün) ----------
+// ---------- CORS ----------
+// İcazə verilən origin-lər konfiqurasiyadan gəlir (Cors:AllowedOrigins).
+// Təyin olunmayıbsa React dev serverinə düşür — beləliklə Docker/prod
+// mühiti öz origin-ini ötürə bilir, lokal iş isə əvvəlki kimi qalır.
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:5173"];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());

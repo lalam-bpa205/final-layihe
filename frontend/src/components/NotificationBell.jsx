@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-import api from '../api/axios';
+import api, { hubUrl } from '../api/axios';
 
-const HUB_URL = 'http://localhost:5042/hubs/notifications';
+const HUB_URL = hubUrl('notifications');
 const LAST_SEEN_KEY = 'notif_last_seen_id';
 
 const timeAgo = (dateStr) => {

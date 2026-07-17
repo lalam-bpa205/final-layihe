@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-import api from '../api/axios';
+import api, { hubUrl } from '../api/axios';
 
-const HUB_URL = 'http://localhost:5042/hubs/chat';
+const HUB_URL = hubUrl('chat');
 
 const timeOf = (d) =>
   new Date(d).toLocaleTimeString('az', { hour: '2-digit', minute: '2-digit' });
