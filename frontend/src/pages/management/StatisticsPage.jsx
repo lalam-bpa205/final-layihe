@@ -11,7 +11,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import api from '../../api/axios';
-import { PageHeader, StatCard, Avatar, EmptyState } from '../../components/ui';
+import { PageHeader, StatCard, Avatar, EmptyState, Button } from '../../components/ui';
+import { notify } from '../../notify';
 import {
   Card,
   actionLabel,
@@ -163,6 +164,24 @@ export default function StatisticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const downloadReport = async () => {
+    setPdfLoading(true);
+    try {
+      const { data: blob } = await api.get('/dashboard/pdf', { responseType: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `idareetme-hesabati-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      notify.error('Hesabat yüklənə bilmədi.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   useEffect(() => {
     api
@@ -206,6 +225,11 @@ export default function StatisticsPage() {
       <PageHeader
         title="İdarəetmə paneli"
         description="Bütün modullar üzrə vahid mənzərə — maliyyə, əməliyyat və sistem aktivliyi"
+        actions={
+          <Button variant="secondary" onClick={downloadReport} loading={pdfLoading}>
+            📄 PDF hesabat
+          </Button>
+        }
       />
 
       {error && (
