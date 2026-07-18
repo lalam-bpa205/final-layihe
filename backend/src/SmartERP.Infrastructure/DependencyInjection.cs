@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SmartERP.Application.Common.Interfaces;
 using SmartERP.Application.Features.Ai;
+using SmartERP.Application.Features.Finance;
 using SmartERP.Application.Features.Reports;
 using SmartERP.Infrastructure.Ai;
 using SmartERP.Infrastructure.Identity;
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
 
         services.AddScoped<IReportService, ExcelReportService>();
+        services.AddScoped<IInvoicePdfService, InvoicePdfService>();
 
         services.Configure<OpenAiSettings>(configuration.GetSection(OpenAiSettings.SectionName));
         services.AddHttpClient<IAiAssistantService, OpenAiAssistantService>();

@@ -107,6 +107,25 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const downloadPdf = async () => {
+    setPdfLoading(true);
+    try {
+      // Auth token tələb olunur → axios ilə blob kimi çəkib yükləməni tetikləyirik
+      const { data } = await api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${invoice?.number ?? 'faktura'}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      notify.error('PDF yüklənə bilmədi.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   if (loading) {
     return <DetailSkeleton />;
   }
@@ -141,6 +160,9 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={() => window.print()}>
             🖨 Çap et
+          </Button>
+          <Button variant="secondary" onClick={downloadPdf} loading={pdfLoading}>
+            📄 PDF yüklə
           </Button>
           {(invoice.status === 1 || invoice.status === 2) && (
             <Button onClick={openPay}>Ödəniş qəbul et</Button>

@@ -17,6 +17,9 @@ using SmartERP.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// QuestPDF Community lisenziyası — <$1M dövriyyəli təşkilatlar/fərdlər üçün pulsuz
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 // ---------- Serilog ----------
 builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));

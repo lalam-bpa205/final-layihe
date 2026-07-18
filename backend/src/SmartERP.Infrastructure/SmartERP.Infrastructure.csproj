@@ -7,6 +7,8 @@
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <!-- QuestPDF Community lisenziyası — <$1M dövriyyəli təşkilatlar və fərdlər üçün PULSUZ -->
+    <PackageReference Include="QuestPDF" Version="2026.7.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
